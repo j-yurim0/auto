@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>생산 공정 중량 및 일정 관리</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #0d9488;
+            --primary-dark: #0f766e;
+            --bg-color: #f0fdfa;
+            --card-bg: #ffffff;
+        }
+        
+        body { 
+            font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; 
+            padding: 20px; 
+            background-color: #f4f7f6; 
+            display: flex;
+            justify-content: center;
+            color: #333;
+        }
+        .container { 
+            width: 100%;
+            max-width: 700px; 
+            background: var(--card-bg); 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08); 
+            border-top: 6px solid var(--primary-color);
+        }
+        h2 { 
+            text-align: center;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+            color: #1f2937;
+        }
+        .form-type-selector {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .form-type-selector label {
+            font-size: 1.05em;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 10px 20px;
+            border: 2px solid var(--primary-color);
+            border-radius: 8px;
+            color: var(--primary-color);
+            transition: all 0.2s;
+            background: white;
+        }
+        .form-type-selector input[type="radio"] { display: none; }
+        .form-type-selector input[type="radio"]:checked + label {
+            background-color: var(--primary-color);
+            color: white;
+            box-shadow: 0 4px 6px rgba(13, 148, 136, 0.2);
+        }
+        .upload-section { 
+            margin-bottom: 20px; 
+            padding: 40px 20px; 
+            border: 2px dashed var(--primary-color); 
+            background-color: var(--bg-color);
+            text-align: center; 
+            border-radius: 8px; 
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-section.dragover {
+            background-color: #d1fae5;
+            border-color: var(--primary-dark);
+        }
+        .fake-btn {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: #fff;
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+            border-radius: 5px;
+            font-weight: bold;
+            pointer-events: none; 
+        }
+        .result-section { 
+            margin-top: 20px; 
+            display: none; 
+        }
+        .file-result-card {
+            border: 1px solid #e5e7eb;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            background-color: #fafafa;
+            position: relative;
+        }
+        .file-name-title {
+            font-size: 0.95em;
+            color: #4b5563;
+            margin-bottom: 12px;
+            word-break: break-all;
+            padding-right: 30px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .badge.sales { background-color: #dbeafe; color: #1e40af; }
+        .badge.design { background-color: #e0e7ff; color: #3730a3; }
+        
+        .delete-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: #9ca3af;
+            font-size: 1.2em;
+            cursor: pointer;
+            font-weight: bold;
+            transition: color 0.2s;
+        }
+        .delete-btn:hover { color: #ef4444; }
+        
+        .info-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .input-field {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 1em;
+            box-sizing: border-box;
+            background-color: #fff;
+            font-weight: bold;
+            color: #1f2937;
+        }
+
+        /* 규격별 중량 리스트 UI */
+        .spec-list-wrapper {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+        }
+        .spec-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .spec-tag {
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            color: #334155;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .spec-tag strong {
+            color: #0f766e;
+            font-size: 1.15em;
+        }
+        .spec-type-pipe { border-left: 4px solid #3b82f6; } /* 파란색: 각관 */
+        .spec-type-short { border-left: 4px solid #f59e0b; } /* 주황색: 단척 */
+        .spec-type-cbeam { border-left: 4px solid #10b981; } /* 녹색: C형강 */
+
+        .action-buttons { display: flex; gap: 10px; margin-top: 20px; }
+        button {
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            padding: 15px;
+            font-size: 1.1em;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        button.reset-btn { background-color: #9ca3af; color: white; flex: 1; }
+        button.reset-btn:hover { background-color: #6b7280; }
+        button.submit-btn { background-color: var(--primary-color); color: white; flex: 2; }
+        button.submit-btn:hover { background-color: var(--primary-dark); }
+        .info-text { font-size: 0.9em; color: #6b7280; text-align: center; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🏭 생산 공정: 견적 중량 & 일정 관리기</h2>
+    
+    <div class="form-type-selector">
+        <input type="radio" id="typeSales" name="formType" value="sales" checked>
+        <label for="typeSales">영업 견적서 기반</label>
+        
+        <input type="radio" id="typeDesign" name="formType" value="design">
+        <label for="typeDesign">설계 산출서 기반</label>
+    </div>
+
+    <div class="upload-section" id="dropZone">
+        <p style="margin-top: 0; font-weight: bold; color: #0f766e; pointer-events: none; font-size: 1.1em;">
+            견적서/산출서 엑셀 파일을 이곳으로 드래그 하세요.<br>
+            <span style="font-size: 0.85em; color: #6b7280; font-weight: normal;">(여러 파일 동시 업로드 가능)</span>
+        </p>
+        <div class="fake-btn">클릭하여 파일 선택</div>
+        <input type="file" id="excelFile" accept=".xlsx, .xls" multiple style="display: none;" />
+    </div>
+
+    <div id="resultArea" class="result-section">
+        <div style="font-weight: bold; margin-bottom: 15px; font-size: 1.1em; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">
+            📋 추출된 현장별 규격 중량 데이터
+        </div>
+        
+        <div id="resultList"></div>
+        
+        <div class="action-buttons">
+            <button class="reset-btn" onclick="clearList()">목록 초기화</button>
+            <button class="submit-btn" onclick="sendToGoogleSheet()">구글 시트로 일괄 업데이트</button>
+        </div>
+        <p class="info-text">※ 중량이 0인 규격은 자동으로 제외되어 표출됩니다.</p>
+    </div>
+</div>
+
+<script>
+    let globalFileCounter = 0;
+
+    function escapeHtml(str) {
+        if (!str) return "";
+        return String(str).replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function getNum(val) {
+        if (val === undefined || val === null || val === "") return 0;
+        let n = parseFloat(String(val).replace(/[^0-9.-]/g, ''));
+        return isNaN(n) ? 0 : n;
+    }
+
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('excelFile');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); });
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) {
+            fileInput.files = e.dataTransfer.files; 
+            processFiles(e.dataTransfer.files);     
+        }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) processFiles(e.target.files);
+    });
+
+    function clearList() {
+        if(confirm("추출된 리스트를 모두 초기화하시겠습니까?")) {
+            document.getElementById('resultList').innerHTML = '';
+            document.getElementById('resultArea').style.display = "none";
+            document.getElementById('excelFile').value = ''; 
+            globalFileCounter = 0;
+        }
+    }
+
+    function processFiles(files) {
+        if (files.length === 0) return;
+        
+        let formType = document.querySelector('input[name="formType"]:checked').value;
+        let typeStr = formType === 'sales' ? '영업 기반' : '설계 기반';
+        let badgeClass = formType === 'sales' ? 'sales' : 'design';
+        
+        let resultList = document.getElementById('resultList');
+        document.getElementById('resultArea').style.display = "block";
+
+        Array.from(files).forEach((f) => {
+            let currentId = globalFileCounter++; 
+            let reader = new FileReader();
+
+            reader.onload = function(e) {
+                try {
+                    let data = new Uint8Array(e.target.result);
+                    let workbook = XLSX.read(data, {type: 'array'});
+                    
+                    let projectName = extractProjectName(workbook, formType);
+                    
+                    let weights = extractWeightsBySpec(workbook, formType);
+
+                    let specTagsHtml = "";
+                    if (weights.length > 0) {
+                        weights.forEach(w => {
+                            specTagsHtml += `
+                                <div class="spec-tag spec-type-${w.type}">
+                                    ${w.name} <strong>${w.weight.toLocaleString('ko-KR', {maximumFractionDigits: 3})}</strong> kg
+                                </div>
+                            `;
+                        });
+                    } else {
+                        specTagsHtml = `<div style="color:#ef4444; font-size:0.9em; width:100%;">추출된 규격별 중량 데이터가 없습니다. (전부 0이거나 양식 다름)</div>`;
+                    }
+
+                    let cardHtml = `
+                        <div class="file-result-card" id="card_${currentId}" data-id="${currentId}">
+                            <button class="delete-btn" onclick="document.getElementById('card_${currentId}').remove()" title="이 항목 삭제">✕</button>
+                            
+                            <div class="file-name-title">
+                                📁 ${escapeHtml(f.name)} <span class="badge ${badgeClass}">${typeStr}</span>
+                            </div>
+                            
+                            <div class="info-group">
+                                <input type="text" id="proj_${currentId}" class="input-field" value="${escapeHtml(projectName)}" placeholder="프로젝트명(현장명)">
+                            </div>
+
+                            <div class="spec-list-wrapper">
+                                <div style="font-weight:bold; font-size: 0.9em; color: #4b5563;">
+                                    ⚖️ 규격별 산출 중량
+                                </div>
+                                <div class="spec-list">
+                                    ${specTagsHtml}
+                                </div>
+                            </div>
+                            
+                            <input type="hidden" id="specData_${currentId}" value='${JSON.stringify(weights)}'>
+                        </div>
+                    `;
+                    resultList.insertAdjacentHTML('beforeend', cardHtml);
+                } catch (error) {
+                    console.error("파일 처리 오류:", f.name, error);
+                    let errorHtml = `
+                        <div class="file-result-card" style="background-color: #fef2f2; border-color: #fecaca;">
+                            <button class="delete-btn" onclick="this.parentElement.remove()">✕</button>
+                            <div class="file-name-title">📁 ${escapeHtml(f.name)}</div>
+                            <div style="color: #dc2626; font-weight: bold;">❌ 엑셀 분석 실패 (에러 발생)</div>
+                        </div>
+                    `;
+                    resultList.insertAdjacentHTML('beforeend', errorHtml);
+                }
+            };
+            reader.readAsArrayBuffer(f);
+        });
+        document.getElementById('excelFile').value = ""; 
+    }
+
+    function extractProjectName(workbook, formType) {
+        let company = "업체명미상", site = "현장명미상";
+        try {
+            if (formType === 'sales') {
+                let sheet = workbook.Sheets[workbook.SheetNames[0]];
+                let data = XLSX.utils.sheet_to_json(sheet, {header: 1});
+                for (let i = 0; i < Math.min(20, data.length); i++) {
+                    let row = data[i];
+                    if (!row) continue;
+                    for (let j = 0; j < row.length; j++) {
+                        let cellVal = String(row[j] || "");
+                        if (cellVal.includes("견") && cellVal.includes("적")) {
+                            let match = cellVal.match(/\(([^)]+)\)/);
+                            if (match) site = match[1].trim();
+                            else if (cellVal.includes("-")) {
+                                let parts = cellVal.split("-");
+                                if (parts.length > 1) site = parts[parts.length - 1].trim();
+                            }
+                        }
+                    }
+                }
+                if (data[9] && data[9][2]) company = String(data[9][2]).replace(/주식회사/g, '').trim();
+            } else if (formType === 'design') {
+                let estimateSheet = workbook.Sheets["견적서"] || workbook.Sheets[workbook.SheetNames[0]];
+                let estData = XLSX.utils.sheet_to_json(estimateSheet, {header: 1});
+                if (estData[10] && estData[10][2]) company = String(estData[10][2]).replace(/주식회사/g, '').trim();
+                if (estData[0] && estData[0][25]) site = String(estData[0][25]).trim();
+            }
+        } catch(e) {}
+        return `${company}(${site})`;
+    }
+
+    function extractWeightsBySpec(workbook, formType) {
+        let sheetName = workbook.SheetNames[0]; 
+        if (formType === 'design') {
+            let calcSheet = workbook.SheetNames.find(name => name.includes("수량산출서") || name.includes("산출서"));
+            if (calcSheet) sheetName = calcSheet;
+        }
+
+        let worksheet = workbook.Sheets[sheetName];
+        if (!worksheet) return [];
+
+        let json_data = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+        
+        const pipeSpecs = [
+            [100, 100, 3.2], [100, 100, 3.0], [100, 100, 2.3], [100, 100, 2.1],
+            [100, 50, 2.1], [75, 75, 2.1], [50, 50, 2.1]
+        ];
+        const cSpecs = [
+            [125, 50, 3.2], [125, 50, 3.0], [125, 50, 2.1], 
+            [100, 50, 3.2], [100, 50, 3.0], [100, 50, 2.3], [100, 50, 2.1], 
+            [75, 45, 2.3], [75, 45, 2.1]
+        ];
+
+        let resultMap = {}; 
+
+        for (let i = 0; i < json_data.length; i++) {
+            let row = json_data[i];
+            if (!row || row.length === 0) continue;
+
+            let weight = getNum(row[10]); 
+            if (weight <= 0) continue;
+
+            let p_d1, p_d2, p_t, p_len;
+            let c_d1, c_d2, c_t;
+
+            if (formType === 'sales') {
+                p_d1 = getNum(row[2]); p_d2 = getNum(row[3]); p_t = getNum(row[4]); p_len = getNum(row[5]);
+                c_d1 = getNum(row[2]); c_d2 = getNum(row[3]); c_t = getNum(row[5]);
+            } else {
+                p_d1 = getNum(row[4]); p_d2 = getNum(row[5]); p_t = getNum(row[6]); p_len = getNum(row[7]);
+                c_d1 = getNum(row[4]); c_d2 = getNum(row[5]); c_t = getNum(row[7]);
+            }
+
+            let matchedPipe = pipeSpecs.find(s => s[0] === p_d1 && s[1] === p_d2 && s[2] === p_t);
+            if (matchedPipe) {
+                let key = "";
+                if (p_len >= 2) {
+                    key = `pipe_각관 ${p_d1}x${p_d2}x${p_t}`;
+                    if(!resultMap[key]) resultMap[key] = { type: 'pipe', name: `각관 ${p_d1}x${p_d2}x${p_t}`, weight: 0 };
+                    resultMap[key].weight += weight;
+                } else if (p_len > 0 && p_len < 2) { 
+                    key = `short_단척 ${p_d1}x${p_d2}x${p_t}`;
+                    if(!resultMap[key]) resultMap[key] = { type: 'short', name: `단척 ${p_d1}x${p_d2}x${p_t}`, weight: 0 };
+                    resultMap[key].weight += weight;
+                }
+                continue; 
+            }
+
+            let matchedC = cSpecs.find(s => s[0] === c_d1 && s[1] === c_d2 && s[2] === c_t);
+            if (matchedC) {
+                let key = `cbeam_C형강 ${c_d1}x${c_d2}x${c_t}`;
+                if(!resultMap[key]) resultMap[key] = { type: 'cbeam', name: `C형강 ${c_d1}x${c_d2}x${c_t}`, weight: 0 };
+                resultMap[key].weight += weight;
+            }
+        }
+
+        let resultsArray = Object.values(resultMap).map(item => ({
+            ...item,
+            weight: Math.round(item.weight * 1000) / 1000 
+        }));
+
+        resultsArray.sort((a, b) => {
+            const order = { 'pipe': 1, 'short': 2, 'cbeam': 3 };
+            return order[a.type] - order[b.type];
+        });
+
+        return resultsArray;
+    }
+
+    function sendToGoogleSheet() {
+        const cards = document.querySelectorAll('.file-result-card[data-id]');
+        if (cards.length === 0) {
+            alert("전송할 데이터가 없습니다.");
+            return;
+        }
+
+        const btn = document.querySelector('.submit-btn');
+        btn.innerText = "데이터 연동 중...";
+        btn.disabled = true;
+
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzsvaN2h0_Z3j_2o_ktgVoqQmEjmrUc61Dp47OvUnyvgoko3reDY21VZa8kf6yzXoA2/exec"; 
+
+        let fetchPromises = [];
+        
+        // 날짜를 2026.04.07 형식으로 생성
+        let today = new Date();
+        let yyyy = today.getFullYear();
+        let mm = String(today.getMonth() + 1).padStart(2, '0');
+        let dd = String(today.getDate()).padStart(2, '0');
+        let dateString = `${yyyy}.${mm}.${dd}`;
+
+        cards.forEach(card => {
+            let id = card.getAttribute('data-id');
+            let proj = document.getElementById(`proj_${id}`).value.trim() || "업체명 누락";
+            let specData = JSON.parse(document.getElementById(`specData_${id}`).value);
+            
+            let pipes = [], shorts = [], cbeams = [];
+            
+            specData.forEach(item => {
+                let specStr = item.name.split(' ')[1]; 
+                if (item.type === 'pipe') pipes.push({ spec: specStr, weight: item.weight });
+                else if (item.type === 'short') shorts.push({ spec: specStr, weight: item.weight });
+                else if (item.type === 'cbeam') cbeams.push({ spec: specStr, weight: item.weight });
+            });
+
+            const dataPayload = {
+                date: dateString,
+                project: proj,
+                pipes: pipes,
+                shorts: shorts,
+                cbeams: cbeams
+            };
+
+            // 다시 가장 안정적인 JSON 전송 방식으로 복구
+            fetchPromises.push(
+                fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(dataPayload)
+                })
+            );
+        });
+
+        Promise.all(fetchPromises).then(() => {
+            alert(`✅ 성공적으로 구글 시트에 업데이트 되었습니다!\n\n스프레드시트 하단의 탭을 확인해주세요.`);
+            btn.innerText = "구글 시트로 일괄 업데이트";
+            btn.disabled = false;
+            
+            document.getElementById('resultArea').style.display = "none";
+            document.getElementById('resultList').innerHTML = ""; 
+            document.getElementById('excelFile').value = ''; 
+            globalFileCounter = 0;
+        }).catch(err => {
+            alert("전송 중 네트워크 오류가 발생했습니다.");
+            btn.innerText = "구글 시트로 일괄 업데이트";
+            btn.disabled = false;
+        });
+    }
+</script>
+
+</body>
+</html>
