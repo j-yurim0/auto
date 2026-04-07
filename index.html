@@ -149,7 +149,6 @@
             color: #1f2937;
         }
 
-        /* 규격별 중량 리스트 UI */
         .spec-list-wrapper {
             background: white;
             padding: 15px;
@@ -178,9 +177,9 @@
             color: #0f766e;
             font-size: 1.15em;
         }
-        .spec-type-pipe { border-left: 4px solid #3b82f6; } /* 파란색: 각관 */
-        .spec-type-short { border-left: 4px solid #f59e0b; } /* 주황색: 단척 */
-        .spec-type-cbeam { border-left: 4px solid #10b981; } /* 녹색: C형강 */
+        .spec-type-pipe { border-left: 4px solid #3b82f6; }
+        .spec-type-short { border-left: 4px solid #f59e0b; }
+        .spec-type-cbeam { border-left: 4px solid #10b981; }
 
         .action-buttons { display: flex; gap: 10px; margin-top: 20px; }
         button {
@@ -477,16 +476,18 @@
         btn.innerText = "데이터 연동 중...";
         btn.disabled = true;
 
+        // 본인의 구글 웹 앱 URL로 반드시 교체하세요.
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbySt5l6Uj8RafkDwXlvx-yhnoPP3kPEDiSdnn5imc7xRj9IGuZjFFze_MbIwRogrf9T/exec"; 
 
         let fetchPromises = [];
         
-        // 날짜를 2026.04.07 형식으로 생성
+        // 데이터 명확히 분리 (연, 월, 일)
         let today = new Date();
         let yyyy = today.getFullYear();
-        let mm = String(today.getMonth() + 1).padStart(2, '0');
+        let mmNumber = today.getMonth() + 1; // 월을 숫자로 (예: 4)
+        let mmString = String(mmNumber).padStart(2, '0');
         let dd = String(today.getDate()).padStart(2, '0');
-        let dateString = `${yyyy}.${mm}.${dd}`;
+        let dateString = `${yyyy}.${mmString}.${dd}`;
 
         cards.forEach(card => {
             let id = card.getAttribute('data-id');
@@ -502,15 +503,17 @@
                 else if (item.type === 'cbeam') cbeams.push({ spec: specStr, weight: item.weight });
             });
 
+            // year와 month를 확실하게 데이터에 포함하여 전송합니다.
             const dataPayload = {
                 date: dateString,
+                year: yyyy,         // 추가됨
+                month: mmNumber,    // 추가됨
                 project: proj,
                 pipes: pipes,
                 shorts: shorts,
                 cbeams: cbeams
             };
 
-            // 다시 가장 안정적인 JSON 전송 방식으로 복구
             fetchPromises.push(
                 fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
