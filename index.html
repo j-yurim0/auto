@@ -106,6 +106,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            flex-wrap: wrap;
         }
         .badge {
             display: inline-block;
@@ -116,6 +117,7 @@
         }
         .badge.sales { background-color: #dbeafe; color: #1e40af; }
         .badge.design { background-color: #e0e7ff; color: #3730a3; }
+        .badge.acc { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
         
         .delete-btn {
             position: absolute;
@@ -299,6 +301,9 @@
                     
                     let projectName = extractProjectName(workbook, formType);
                     let weights = extractWeightsBySpec(workbook, formType);
+                    
+                    // 브라켓 및 볼트 유무 추출 로직 호출
+                    let accessories = extractAccessories(workbook, formType);
 
                     let specTagsHtml = "";
                     if (weights.length > 0) {
@@ -313,12 +318,19 @@
                         specTagsHtml = `<div style="color:#ef4444; font-size:0.9em; width:100%;">추출된 규격별 중량 데이터가 없습니다. (전부 0이거나 양식 다름)</div>`;
                     }
 
+                    // 브라켓, 볼트 표시 뱃지
+                    let accBadgeHtml = "";
+                    if (accessories.hasBracket) accBadgeHtml += `<span class="badge acc">브라켓 O</span>`;
+                    if (accessories.hasBolt) accBadgeHtml += `<span class="badge acc">볼트 O</span>`;
+
                     let cardHtml = `
                         <div class="file-result-card" id="card_${currentId}" data-id="${currentId}">
                             <button class="delete-btn" onclick="document.getElementById('card_${currentId}').remove()" title="이 항목 삭제">✕</button>
                             
                             <div class="file-name-title">
-                                📁 ${escapeHtml(f.name)} <span class="badge ${badgeClass}">${typeStr}</span>
+                                📁 ${escapeHtml(f.name)} 
+                                <span class="badge ${badgeClass}">${typeStr}</span>
+                                ${accBadgeHtml}
                             </div>
                             
                             <div class="info-group">
@@ -335,6 +347,7 @@
                             </div>
                             
                             <input type="hidden" id="specData_${currentId}" value='${JSON.stringify(weights)}'>
+                            <input type="hidden" id="accData_${currentId}" value='${JSON.stringify(accessories)}'>
                         </div>
                     `;
                     resultList.insertAdjacentHTML('beforeend', cardHtml);
@@ -387,6 +400,66 @@
         return `${company}(${site})`;
     }
 
+    // 브라켓 및 볼트 유무 추출 로직
+    function extractAccessories(workbook, formType) {
+        let hasBracket = false;
+        let hasBolt = false;
+
+        try {
+            let sheetName = workbook.SheetNames[0]; 
+            if (formType === 'design') {
+                let calcSheet = workbook.SheetNames.find(name => name.includes("수량산출서") || name.includes("산출서"));
+                if (calcSheet) sheetName = calcSheet;
+            }
+
+            let worksheet = workbook.Sheets[sheetName];
+            if (!worksheet) return { hasBracket, hasBolt };
+
+            let data = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+            let currentAcc = ""; // 현재 어느 구역(브라켓/볼트)을 순회 중인지 기억
+
+            for (let i = 0; i < data.length; i++) {
+                let row = data[i];
+                if (!row || row.length === 0) continue;
+
+                // 행 전체 데이터를 공백 없이 문자열로 결합하여 키워드 검사
+                let rowStr = row.join("").replace(/\s/g, ''); 
+                
+                if (formType === 'design') {
+                    if (rowStr.includes("브라켓")) currentAcc = 'bracket';
+                    if (rowStr.toUpperCase().includes("BOLTSET")) currentAcc = 'bolt';
+                    
+                    // C열 (인덱스 2)에서 "소계" 확인
+                    if (String(row[2] || "").includes("소계")) {
+                        let qty = getNum(row[9]); // J열 (인덱스 9) 수량
+                        if (qty > 0) {
+                            if (currentAcc === 'bracket') hasBracket = true;
+                            if (currentAcc === 'bolt') hasBolt = true;
+                        }
+                        currentAcc = ""; // 플래그 초기화
+                    }
+                } else if (formType === 'sales') {
+                    if (rowStr.includes("부자재")) currentAcc = 'bracket';
+                    if (rowStr.toUpperCase().includes("BOLTSET")) currentAcc = 'bolt';
+                    
+                    // B열 (인덱스 1)에서 "소계" 확인
+                    if (String(row[1] || "").includes("소계")) {
+                        let qty = getNum(row[7]); // H열 (인덱스 7) 수량
+                        if (qty > 0) {
+                            if (currentAcc === 'bracket') hasBracket = true;
+                            if (currentAcc === 'bolt') hasBolt = true;
+                        }
+                        currentAcc = ""; // 플래그 초기화
+                    }
+                }
+            }
+        } catch(e) {
+            console.error("액세서리(브라켓/볼트) 추출 중 오류 발생:", e);
+        }
+        
+        return { hasBracket, hasBolt };
+    }
+
     function extractWeightsBySpec(workbook, formType) {
         let sheetName = workbook.SheetNames[0]; 
         if (formType === 'design') {
@@ -420,13 +493,12 @@
 
             let p_d1, p_d2, p_t, p_len;
             let c_d1, c_d2, c_t;
-            let isNonPerf = false; // 무타공 여부 플래그
+            let isNonPerf = false; 
 
             if (formType === 'sales') {
                 p_d1 = getNum(row[2]); p_d2 = getNum(row[3]); p_t = getNum(row[4]); p_len = getNum(row[5]);
                 c_d1 = getNum(row[2]); c_d2 = getNum(row[3]); c_t = getNum(row[5]);
                 
-                // O열 (인덱스 14) 비고란 확인하여 무타공 여부 체크
                 let remark = String(row[14] || "").replace(/\s/g, ''); 
                 if (remark.includes("무타공")) {
                     isNonPerf = true;
@@ -435,14 +507,12 @@
                 p_d1 = getNum(row[4]); p_d2 = getNum(row[5]); p_t = getNum(row[6]); p_len = getNum(row[7]);
                 c_d1 = getNum(row[4]); c_d2 = getNum(row[5]); c_t = getNum(row[7]);
                 
-                // C열 (인덱스 2) 확인하여 무타공 여부 체크 (설계 산출서)
                 let designRemark = String(row[2] || "").replace(/\s/g, ''); 
                 if (designRemark.includes("무타공")) {
                     isNonPerf = true;
                 }
             }
 
-            // 1. 각관/단척 매칭
             let matchedPipe = pipeSpecs.find(s => s[0] === p_d1 && s[1] === p_d2 && s[2] === p_t);
             if (matchedPipe) {
                 let type = "";
@@ -456,10 +526,9 @@
                     type = 'short';
                     baseName = `단척 ${specStr}`;
                 } else {
-                    continue; // 매칭되지 않으면 패스
+                    continue; 
                 }
 
-                // 무타공인 경우 규격 문자열 앞에 '무타공' 추가
                 if (isNonPerf) {
                     specStr = `무타공 ${specStr}`;
                     baseName = `[무타공] ${baseName}`;
@@ -471,14 +540,12 @@
                 continue; 
             }
 
-            // 2. C형강 매칭
             let matchedC = cSpecs.find(s => s[0] === c_d1 && s[1] === c_d2 && s[2] === c_t);
             if (matchedC) {
                 let type = 'cbeam';
                 let specStr = `${c_d1}x${c_d2}x${c_t}`;
                 let baseName = `C형강 ${specStr}`;
 
-                // 무타공인 경우 규격 문자열 앞에 '무타공' 추가
                 if (isNonPerf) {
                     specStr = `무타공 ${specStr}`;
                     baseName = `[무타공] ${baseName}`;
@@ -495,7 +562,6 @@
             weight: Math.round(item.weight * 1000) / 1000 
         }));
 
-        // 정렬: 각관 -> 단척 -> C형강 -> 무타공 순서
         resultsArray.sort((a, b) => {
             const order = { 'pipe': 1, 'short': 2, 'cbeam': 3, 'non_perf': 4 };
             return order[a.type] - order[b.type];
@@ -515,7 +581,7 @@
         btn.innerText = "데이터 연동 중...";
         btn.disabled = true;
 
-        // 본인의 구글 웹 앱 URL로 반드시 교체하세요.
+        // 반드시 본인의 구글 웹 앱 URL로 교체하세요!
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw1hCRqkz0YaqXMf-HO8ptnkL2oQhDWY-QeKlf3arSQ2AfxbY__b1eAZ54GL394OJpC/exec"; 
 
         let fetchPromises = [];
@@ -530,12 +596,13 @@
         cards.forEach(card => {
             let id = card.getAttribute('data-id');
             let proj = document.getElementById(`proj_${id}`).value.trim() || "업체명 누락";
+            
             let specData = JSON.parse(document.getElementById(`specData_${id}`).value);
+            let accData = JSON.parse(document.getElementById(`accData_${id}`).value); // 브라켓, 볼트 데이터
             
             let pipes = [], shorts = [], cbeams = [];
             
             specData.forEach(item => {
-                // 저장해둔 규격(spec) 텍스트를 바로 사용합니다. (무타공인 경우 이미 '무타공 100x50...' 형태로 저장됨)
                 let specStr = item.spec; 
                 
                 if (item.type === 'pipe') pipes.push({ spec: specStr, weight: item.weight });
@@ -543,6 +610,7 @@
                 else if (item.type === 'cbeam') cbeams.push({ spec: specStr, weight: item.weight });
             });
 
+            // 페이로드에 hasBracket, hasBolt 문자열 값 포함하여 전송
             const dataPayload = {
                 date: dateString,
                 year: yyyy,         
@@ -550,7 +618,9 @@
                 project: proj,
                 pipes: pipes,
                 shorts: shorts,
-                cbeams: cbeams
+                cbeams: cbeams,
+                hasBracket: accData.hasBracket ? "O" : "",
+                hasBolt: accData.hasBolt ? "O" : ""
             };
 
             fetchPromises.push(
