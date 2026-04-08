@@ -312,18 +312,13 @@
                     `;
                     resultList.insertAdjacentHTML('beforeend', cardHtml);
 
-                    // ★ 핵심 최적화: 엑셀 파일 다이어트 (무거운 DB 시트 제거 후 가볍게 업로드)
-                    let slimWb = XLSX.utils.book_new();
-                    workbook.SheetNames.forEach(sheetName => {
-                        // 용량을 엄청나게 차지하는 마스터 데이터 시트들을 제외하고 복사합니다.
-                        if (!["생산품", "상품", "데이터", "SAP입력", "가격"].includes(sheetName)) {
-                            XLSX.utils.book_append_sheet(slimWb, workbook.Sheets[sheetName], sheetName);
-                        }
-                    });
-                    
-                    // 다이어트된 가벼운 엑셀 파일을 FileReader 없이 즉시 Base64로 변환합니다.
-                    let base64String = XLSX.write(slimWb, { type: 'base64', bookType: 'xlsx' });
-                    document.getElementById(`fileData64_${currentId}`).value = base64String;
+                    // 파일을 Base64 문자열로 변환하여 저장
+                    let base64Reader = new FileReader();
+                    base64Reader.onload = function(b64Event) {
+                        let base64String = b64Event.target.result.split(',')[1];
+                        document.getElementById(`fileData64_${currentId}`).value = base64String;
+                    };
+                    base64Reader.readAsDataURL(f);
 
                 } catch (error) {
                     let errorHtml = `
