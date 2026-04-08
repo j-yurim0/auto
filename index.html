@@ -177,9 +177,10 @@
             color: #0f766e;
             font-size: 1.15em;
         }
-        .spec-type-pipe { border-left: 4px solid #3b82f6; }
-        .spec-type-short { border-left: 4px solid #f59e0b; }
-        .spec-type-cbeam { border-left: 4px solid #10b981; }
+        .spec-type-pipe { border-left: 4px solid #3b82f6; } /* 파란색 */
+        .spec-type-short { border-left: 4px solid #f59e0b; } /* 주황색 */
+        .spec-type-cbeam { border-left: 4px solid #10b981; } /* 초록색 */
+        .spec-type-non_perf { border-left: 4px solid #a855f7; } /* 보라색 (무타공) */
 
         .action-buttons { display: flex; gap: 10px; margin-top: 20px; }
         button {
@@ -297,7 +298,6 @@
                     let workbook = XLSX.read(data, {type: 'array'});
                     
                     let projectName = extractProjectName(workbook, formType);
-                    
                     let weights = extractWeightsBySpec(workbook, formType);
 
                     let specTagsHtml = "";
@@ -420,34 +420,72 @@
 
             let p_d1, p_d2, p_t, p_len;
             let c_d1, c_d2, c_t;
+            let isNonPerf = false; // 무타공 여부 플래그
 
             if (formType === 'sales') {
                 p_d1 = getNum(row[2]); p_d2 = getNum(row[3]); p_t = getNum(row[4]); p_len = getNum(row[5]);
                 c_d1 = getNum(row[2]); c_d2 = getNum(row[3]); c_t = getNum(row[5]);
+                
+                // O열 (인덱스 14) 비고란 확인하여 무타공 여부 체크
+                let remark = String(row[14] || "").replace(/\s/g, ''); 
+                if (remark.includes("무타공")) {
+                    isNonPerf = true;
+                }
             } else {
                 p_d1 = getNum(row[4]); p_d2 = getNum(row[5]); p_t = getNum(row[6]); p_len = getNum(row[7]);
                 c_d1 = getNum(row[4]); c_d2 = getNum(row[5]); c_t = getNum(row[7]);
+                
+                // C열 (인덱스 2) 확인하여 무타공 여부 체크 (설계 산출서)
+                let designRemark = String(row[2] || "").replace(/\s/g, ''); 
+                if (designRemark.includes("무타공")) {
+                    isNonPerf = true;
+                }
             }
 
+            // 1. 각관/단척 매칭
             let matchedPipe = pipeSpecs.find(s => s[0] === p_d1 && s[1] === p_d2 && s[2] === p_t);
             if (matchedPipe) {
-                let key = "";
+                let type = "";
+                let baseName = "";
+                let specStr = `${p_d1}x${p_d2}x${p_t}`;
+
                 if (p_len >= 2) {
-                    key = `pipe_각관 ${p_d1}x${p_d2}x${p_t}`;
-                    if(!resultMap[key]) resultMap[key] = { type: 'pipe', name: `각관 ${p_d1}x${p_d2}x${p_t}`, weight: 0 };
-                    resultMap[key].weight += weight;
+                    type = 'pipe';
+                    baseName = `각관 ${specStr}`;
                 } else if (p_len > 0 && p_len < 2) { 
-                    key = `short_단척 ${p_d1}x${p_d2}x${p_t}`;
-                    if(!resultMap[key]) resultMap[key] = { type: 'short', name: `단척 ${p_d1}x${p_d2}x${p_t}`, weight: 0 };
-                    resultMap[key].weight += weight;
+                    type = 'short';
+                    baseName = `단척 ${specStr}`;
+                } else {
+                    continue; // 매칭되지 않으면 패스
                 }
+
+                // 무타공인 경우 규격 문자열 앞에 '무타공' 추가
+                if (isNonPerf) {
+                    specStr = `무타공 ${specStr}`;
+                    baseName = `[무타공] ${baseName}`;
+                }
+
+                let key = `${type}_${specStr}`;
+                if(!resultMap[key]) resultMap[key] = { type: type, name: baseName, spec: specStr, weight: 0 };
+                resultMap[key].weight += weight;
                 continue; 
             }
 
+            // 2. C형강 매칭
             let matchedC = cSpecs.find(s => s[0] === c_d1 && s[1] === c_d2 && s[2] === c_t);
             if (matchedC) {
-                let key = `cbeam_C형강 ${c_d1}x${c_d2}x${c_t}`;
-                if(!resultMap[key]) resultMap[key] = { type: 'cbeam', name: `C형강 ${c_d1}x${c_d2}x${c_t}`, weight: 0 };
+                let type = 'cbeam';
+                let specStr = `${c_d1}x${c_d2}x${c_t}`;
+                let baseName = `C형강 ${specStr}`;
+
+                // 무타공인 경우 규격 문자열 앞에 '무타공' 추가
+                if (isNonPerf) {
+                    specStr = `무타공 ${specStr}`;
+                    baseName = `[무타공] ${baseName}`;
+                }
+
+                let key = `${type}_${specStr}`;
+                if(!resultMap[key]) resultMap[key] = { type: type, name: baseName, spec: specStr, weight: 0 };
                 resultMap[key].weight += weight;
             }
         }
@@ -457,8 +495,9 @@
             weight: Math.round(item.weight * 1000) / 1000 
         }));
 
+        // 정렬: 각관 -> 단척 -> C형강 -> 무타공 순서
         resultsArray.sort((a, b) => {
-            const order = { 'pipe': 1, 'short': 2, 'cbeam': 3 };
+            const order = { 'pipe': 1, 'short': 2, 'cbeam': 3, 'non_perf': 4 };
             return order[a.type] - order[b.type];
         });
 
@@ -481,10 +520,9 @@
 
         let fetchPromises = [];
         
-        // 데이터 명확히 분리 (연, 월, 일)
         let today = new Date();
         let yyyy = today.getFullYear();
-        let mmNumber = today.getMonth() + 1; // 월을 숫자로 (예: 4)
+        let mmNumber = today.getMonth() + 1; 
         let mmString = String(mmNumber).padStart(2, '0');
         let dd = String(today.getDate()).padStart(2, '0');
         let dateString = `${yyyy}.${mmString}.${dd}`;
@@ -497,17 +535,18 @@
             let pipes = [], shorts = [], cbeams = [];
             
             specData.forEach(item => {
-                let specStr = item.name.split(' ')[1]; 
+                // 저장해둔 규격(spec) 텍스트를 바로 사용합니다. (무타공인 경우 이미 '무타공 100x50...' 형태로 저장됨)
+                let specStr = item.spec; 
+                
                 if (item.type === 'pipe') pipes.push({ spec: specStr, weight: item.weight });
                 else if (item.type === 'short') shorts.push({ spec: specStr, weight: item.weight });
                 else if (item.type === 'cbeam') cbeams.push({ spec: specStr, weight: item.weight });
             });
 
-            // year와 month를 확실하게 데이터에 포함하여 전송합니다.
             const dataPayload = {
                 date: dateString,
-                year: yyyy,         // 추가됨
-                month: mmNumber,    // 추가됨
+                year: yyyy,         
+                month: mmNumber,    
                 project: proj,
                 pipes: pipes,
                 shorts: shorts,
