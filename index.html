@@ -38,7 +38,6 @@
             color: #1f2937;
         }
         
-        /* 담당자 선택 영역 스타일 */
         .manager-section {
             display: flex;
             align-items: center;
@@ -81,8 +80,8 @@
         .form-type-selector input[type="radio"]:checked + label {
             background-color: var(--primary-color);
             color: white;
-            box-shadow: 0 4px 6px rgba(13, 148, 136, 0.2);
         }
+
         .upload-section { 
             margin-bottom: 20px; 
             padding: 40px 20px; 
@@ -205,7 +204,6 @@
         .spec-type-pipe { border-left: 4px solid #3b82f6; } 
         .spec-type-short { border-left: 4px solid #f59e0b; } 
         .spec-type-cbeam { border-left: 4px solid #10b981; } 
-        .spec-type-non_perf { border-left: 4px solid #a855f7; } 
 
         .action-buttons { display: flex; gap: 10px; margin-top: 20px; }
         button {
@@ -243,7 +241,6 @@
             <option value="노성현">노성현</option>
             <option value="권도희">권도희</option>
         </select>
-        <span style="font-size: 0.85em; color: #64748b;">(한 번 선택하면 자동 기억됩니다)</span>
     </div>
     
     <div class="form-type-selector">
@@ -256,8 +253,8 @@
 
     <div class="upload-section" id="dropZone">
         <p style="margin-top: 0; font-weight: bold; color: #0f766e; pointer-events: none; font-size: 1.1em;">
-            견적서/산출서 엑셀 파일을 이곳으로 드래그 하세요.<br>
-            <span style="font-size: 0.85em; color: #6b7280; font-weight: normal;">(여러 파일 동시 업로드 가능)</span>
+            엑셀 파일을 이곳으로 드래그 하세요.<br>
+            <span style="font-size: 0.85em; color: #6b7280; font-weight: normal;">(모든 파일은 구글 드라이브에 PDF로 자동 변환 저장됩니다)</span>
         </p>
         <div class="fake-btn">클릭하여 파일 선택</div>
         <input type="file" id="excelFile" accept=".xlsx, .xls" multiple style="display: none;" />
@@ -274,7 +271,7 @@
             <button class="reset-btn" onclick="clearList()">목록 초기화</button>
             <button class="submit-btn" onclick="sendToGoogleSheet()">구글 시트로 일괄 업데이트</button>
         </div>
-        <p class="info-text">※ 중량이 0인 규격은 자동으로 제외되어 표출됩니다.</p>
+        <p class="info-text">※ 대용량 설계 파일도 '수량산출서'만 추출하여 PDF로 압축 전송합니다.</p>
     </div>
 </div>
 
@@ -283,9 +280,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         const savedManager = localStorage.getItem('selectedManager');
-        if (savedManager) {
-            document.getElementById('managerSelect').value = savedManager;
-        }
+        if (savedManager) document.getElementById('managerSelect').value = savedManager;
     });
 
     function saveManager() {
@@ -313,10 +308,7 @@
     dropZone.addEventListener('drop', (e) => {
         e.preventDefault();
         dropZone.classList.remove('dragover');
-        if (e.dataTransfer.files.length > 0) {
-            fileInput.files = e.dataTransfer.files; 
-            processFiles(e.dataTransfer.files);     
-        }
+        if (e.dataTransfer.files.length > 0) processFiles(e.dataTransfer.files);
     });
 
     fileInput.addEventListener('change', (e) => {
@@ -327,18 +319,12 @@
         if(confirm("추출된 리스트를 모두 초기화하시겠습니까?")) {
             document.getElementById('resultList').innerHTML = '';
             document.getElementById('resultArea').style.display = "none";
-            document.getElementById('excelFile').value = ''; 
             globalFileCounter = 0;
         }
     }
 
     function processFiles(files) {
-        if (files.length === 0) return;
-        
         let formType = document.querySelector('input[name="formType"]:checked').value;
-        let typeStr = formType === 'sales' ? '영업 기반' : '설계 기반';
-        let badgeClass = formType === 'sales' ? 'sales' : 'design';
-        
         let resultList = document.getElementById('resultList');
         document.getElementById('resultArea').style.display = "block";
 
@@ -355,106 +341,73 @@
                     let weights = extractWeightsBySpec(workbook, formType);
                     let accessories = extractAccessories(workbook, formType);
 
-                    let specTagsHtml = "";
-                    if (weights.length > 0) {
-                        weights.forEach(w => {
-                            specTagsHtml += `
-                                <div class="spec-tag spec-type-${w.type}">
-                                    ${w.name} <strong>${w.weight.toLocaleString('ko-KR', {maximumFractionDigits: 3})}</strong> kg
-                                </div>
-                            `;
-                        });
-                    } else {
-                        specTagsHtml = `<div style="color:#ef4444; font-size:0.9em; width:100%;">추출된 규격별 중량 데이터가 없습니다. (전부 0이거나 양식 다름)</div>`;
-                    }
+                    let specTagsHtml = weights.map(w => `
+                        <div class="spec-tag spec-type-${w.type}">
+                            ${w.name} <strong>${w.weight.toLocaleString('ko-KR', {maximumFractionDigits: 3})}</strong> kg
+                        </div>
+                    `).join("") || `<div style="color:#ef4444; font-size:0.9em;">데이터 없음</div>`;
 
-                    let accBadgeHtml = "";
-                    if (accessories.hasBracket) accBadgeHtml += `<span class="badge acc">브라켓 O</span>`;
-                    if (accessories.hasBolt) accBadgeHtml += `<span class="badge acc">볼트 O</span>`;
+                    let accBadgeHtml = (accessories.hasBracket ? `<span class="badge acc">브라켓 O</span>` : "") + 
+                                       (accessories.hasBolt ? `<span class="badge acc">볼트 O</span>` : "");
 
                     let cardHtml = `
                         <div class="file-result-card" id="card_${currentId}" data-id="${currentId}">
-                            <button class="delete-btn" onclick="document.getElementById('card_${currentId}').remove()" title="이 항목 삭제">✕</button>
-                            
-                            <div class="file-name-title">
-                                📁 ${escapeHtml(f.name)} 
-                                <span class="badge ${badgeClass}">${typeStr}</span>
-                                ${accBadgeHtml}
-                            </div>
-                            
+                            <button class="delete-btn" onclick="document.getElementById('card_${currentId}').remove()">✕</button>
+                            <div class="file-name-title">📁 ${escapeHtml(f.name)} ${accBadgeHtml}</div>
                             <div class="info-group">
-                                <input type="text" id="proj_${currentId}" class="input-field" value="${escapeHtml(projectName)}" placeholder="프로젝트명(현장명)">
+                                <input type="text" id="proj_${currentId}" class="input-field" value="${escapeHtml(projectName)}">
                             </div>
-
-                            <div class="spec-list-wrapper">
-                                <div style="font-weight:bold; font-size: 0.9em; color: #4b5563;">
-                                    ⚖️ 규격별 산출 중량
-                                </div>
-                                <div class="spec-list">
-                                    ${specTagsHtml}
-                                </div>
-                            </div>
-                            
+                            <div class="spec-list-wrapper"><div class="spec-list">${specTagsHtml}</div></div>
                             <input type="hidden" id="specData_${currentId}" value='${JSON.stringify(weights)}'>
                             <input type="hidden" id="accData_${currentId}" value='${JSON.stringify(accessories)}'>
-                            
-                            <!-- 구글 드라이브 업로드를 위해 파일 데이터를 Base64로 저장할 숨김 필드 -->
                             <input type="hidden" id="fileData64_${currentId}" value="">
                             <input type="hidden" id="fileName_${currentId}" value="${escapeHtml(f.name)}">
-                            <input type="hidden" id="fileMime_${currentId}" value="${f.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}">
                         </div>
                     `;
                     resultList.insertAdjacentHTML('beforeend', cardHtml);
 
-                    // 파일을 Base64 문자열로 변환하여 저장
-                    let base64Reader = new FileReader();
-                    base64Reader.onload = function(b64Event) {
-                        let base64String = b64Event.target.result.split(',')[1];
-                        document.getElementById(`fileData64_${currentId}`).value = base64String;
-                    };
-                    base64Reader.readAsDataURL(f);
+                    // 용량 최적화 (설계 기반일 경우 시트 1개만 추출)
+                    let outputB64 = "";
+                    if (formType === 'design') {
+                        let newWb = XLSX.utils.book_new();
+                        let calcSheetName = workbook.SheetNames.find(n => n.includes("수량산출서") || n.includes("산출서")) || workbook.SheetNames[0];
+                        if (workbook.Sheets[calcSheetName]) XLSX.utils.book_append_sheet(newWb, workbook.Sheets[calcSheetName], "수량산출서");
+                        outputB64 = XLSX.write(newWb, { bookType: 'xlsx', type: 'base64' });
+                    } else {
+                        outputB64 = dataToBase64(data);
+                    }
+                    document.getElementById(`fileData64_${currentId}`).value = outputB64;
 
-                } catch (error) {
-                    let errorHtml = `
-                        <div class="file-result-card" style="background-color: #fef2f2; border-color: #fecaca;">
-                            <button class="delete-btn" onclick="this.parentElement.remove()">✕</button>
-                            <div class="file-name-title">📁 ${escapeHtml(f.name)}</div>
-                            <div style="color: #dc2626; font-weight: bold;">❌ 엑셀 분석 실패 (에러 발생)</div>
-                        </div>
-                    `;
-                    resultList.insertAdjacentHTML('beforeend', errorHtml);
-                }
+                } catch (error) { console.error(error); }
             };
             reader.readAsArrayBuffer(f);
         });
-        document.getElementById('excelFile').value = ""; 
+    }
+
+    function dataToBase64(uint8) {
+        let bin = "";
+        for (let i = 0; i < uint8.length; i++) bin += String.fromCharCode(uint8[i]);
+        return btoa(bin);
     }
 
     function extractProjectName(workbook, formType) {
         let company = "업체명미상", site = "현장명미상";
         try {
+            let sheet = workbook.Sheets[workbook.SheetNames[0]];
+            let data = XLSX.utils.sheet_to_json(sheet, {header: 1});
             if (formType === 'sales') {
-                let sheet = workbook.Sheets[workbook.SheetNames[0]];
-                let data = XLSX.utils.sheet_to_json(sheet, {header: 1});
-                for (let i = 0; i < Math.min(20, data.length); i++) {
-                    let row = data[i];
-                    if (!row) continue;
-                    for (let j = 0; j < row.length; j++) {
-                        let cellVal = String(row[j] || "");
-                        if (cellVal.includes("견") && cellVal.includes("적")) {
-                            let match = cellVal.match(/\(([^)]+)\)/);
-                            if (match) site = match[1].trim();
-                            else if (cellVal.includes("-")) {
-                                let parts = cellVal.split("-");
-                                if (parts.length > 1) site = parts[parts.length - 1].trim();
-                            }
-                        }
+                for (let i = 0; i < 20; i++) {
+                    let cellVal = String(data[i] ? data[i].join("") : "");
+                    if (cellVal.includes("견적")) {
+                        let m = cellVal.match(/\(([^)]+)\)/);
+                        if (m) site = m[1].trim();
+                        break;
                     }
                 }
                 if (data[9] && data[9][2]) company = String(data[9][2]).replace(/주식회사/g, '').trim();
-            } else if (formType === 'design') {
-                let estimateSheet = workbook.Sheets["견적서"] || workbook.Sheets[workbook.SheetNames[0]];
-                let estData = XLSX.utils.sheet_to_json(estimateSheet, {header: 1});
+            } else {
+                let estSheet = workbook.Sheets["견적서"] || sheet;
+                let estData = XLSX.utils.sheet_to_json(estSheet, {header: 1});
                 if (estData[10] && estData[10][2]) company = String(estData[10][2]).replace(/주식회사/g, '').trim();
                 if (estData[0] && estData[0][25]) site = String(estData[0][25]).trim();
             }
@@ -463,236 +416,101 @@
     }
 
     function extractAccessories(workbook, formType) {
-        let hasBracket = false;
-        let hasBolt = false;
+        let res = { hasBracket: false, hasBolt: false };
         try {
-            let sheetName = workbook.SheetNames[0]; 
-            if (formType === 'design') {
-                let calcSheet = workbook.SheetNames.find(name => name.includes("수량산출서") || name.includes("산출서"));
-                if (calcSheet) sheetName = calcSheet;
-            }
-            let worksheet = workbook.Sheets[sheetName];
-            if (!worksheet) return { hasBracket, hasBolt };
-            let data = XLSX.utils.sheet_to_json(worksheet, {header: 1});
-            let currentAcc = ""; 
-            for (let i = 0; i < data.length; i++) {
-                let row = data[i];
-                if (!row || row.length === 0) continue;
-                let rowStr = row.join("").replace(/\s/g, ''); 
-                if (formType === 'design') {
-                    if (rowStr.includes("브라켓")) currentAcc = 'bracket';
-                    if (rowStr.toUpperCase().includes("BOLTSET")) currentAcc = 'bolt';
-                    if (String(row[2] || "").includes("소계")) {
-                        let qty = getNum(row[9]); 
-                        if (qty > 0) {
-                            if (currentAcc === 'bracket') hasBracket = true;
-                            if (currentAcc === 'bolt') hasBolt = true;
-                        }
-                        currentAcc = ""; 
-                    }
-                } else if (formType === 'sales') {
-                    if (rowStr.includes("부자재")) currentAcc = 'bracket';
-                    if (rowStr.toUpperCase().includes("BOLTSET")) currentAcc = 'bolt';
-                    if (String(row[1] || "").includes("소계")) {
-                        let qty = getNum(row[7]); 
-                        if (qty > 0) {
-                            if (currentAcc === 'bracket') hasBracket = true;
-                            if (currentAcc === 'bolt') hasBolt = true;
-                        }
-                        currentAcc = ""; 
-                    }
-                }
-            }
+            let sheetName = formType === 'design' ? (workbook.SheetNames.find(n => n.includes("산출서")) || workbook.SheetNames[0]) : workbook.SheetNames[0];
+            let data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {header: 1});
+            data.forEach(row => {
+                let s = row.join("").toUpperCase();
+                if (s.includes("브라켓") || s.includes("부자재")) { if(getNum(row[9]||row[7]) > 0) res.hasBracket = true; }
+                if (s.includes("BOLT")) { if(getNum(row[9]||row[7]) > 0) res.hasBolt = true; }
+            });
         } catch(e) {}
-        return { hasBracket, hasBolt };
+        return res;
     }
 
     function extractWeightsBySpec(workbook, formType) {
-        let sheetName = workbook.SheetNames[0]; 
-        if (formType === 'design') {
-            let calcSheet = workbook.SheetNames.find(name => name.includes("수량산출서") || name.includes("산출서"));
-            if (calcSheet) sheetName = calcSheet;
-        }
-        let worksheet = workbook.Sheets[sheetName];
-        if (!worksheet) return [];
-        let json_data = XLSX.utils.sheet_to_json(worksheet, {header: 1});
-        const pipeSpecs = [
-            [100, 100, 3.2], [100, 100, 3.0], [100, 100, 2.3], [100, 100, 2.1],
-            [100, 50, 2.1], [75, 75, 2.1], [50, 50, 2.1]
-        ];
-        const cSpecs = [
-            [125, 50, 3.2], [125, 50, 3.0], [125, 50, 2.1], 
-            [100, 50, 3.2], [100, 50, 3.0], [100, 50, 2.3], [100, 50, 2.1], 
-            [75, 45, 2.3], [75, 45, 2.1]
-        ];
-        let resultMap = {}; 
-        for (let i = 0; i < json_data.length; i++) {
-            let row = json_data[i];
-            if (!row || row.length === 0) continue;
-            let weight = getNum(row[10]); 
-            if (weight <= 0) continue;
+        let sheetName = formType === 'design' ? (workbook.SheetNames.find(n => n.includes("산출서")) || workbook.SheetNames[0]) : workbook.SheetNames[0];
+        let json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {header: 1});
+        const pSpecs = [[100,100,3.2],[100,100,3.0],[100,100,2.3],[100,100,2.1],[100,50,2.1],[75,75,2.1],[50,50,2.1]];
+        const cSpecs = [[125,50,3.2],[125,50,3.0],[125,50,2.1],[100,50,3.2],[100,50,3.0],[100,50,2.3],[100,50,2.1],[75,45,2.3],[75,45,2.1]];
+        let map = {};
+        json.forEach(row => {
+            let w = getNum(row[10]); if (w <= 0) return;
+            let q = getNum(row[9]);
+            let d1 = getNum(row[formType==='sales'?2:4]), d2 = getNum(row[formType==='sales'?3:5]), t = getNum(row[formType==='sales'?4:6]), l = getNum(row[formType==='sales'?5:7]);
+            if (formType!=='sales') t = getNum(row[7]); 
             
-            // ★ J열(인덱스 9)에서 수량 데이터 추출
-            let qty = getNum(row[9]); 
-            
-            let p_d1, p_d2, p_t, p_len;
-            let c_d1, c_d2, c_t;
-            let isNonPerf = false; 
-            
-            if (formType === 'sales') {
-                p_d1 = getNum(row[2]); p_d2 = getNum(row[3]); p_t = getNum(row[4]); p_len = getNum(row[5]);
-                c_d1 = getNum(row[2]); c_d2 = getNum(row[3]); c_t = getNum(row[5]);
-                let remark = String(row[14] || "").replace(/\s/g, ''); 
-                if (remark.includes("무타공")) isNonPerf = true;
-            } else {
-                p_d1 = getNum(row[4]); p_d2 = getNum(row[5]); p_t = getNum(row[6]); p_len = getNum(row[7]);
-                c_d1 = getNum(row[4]); c_d2 = getNum(row[5]); c_t = getNum(row[7]);
-                let designRemark = String(row[2] || "").replace(/\s/g, ''); 
-                if (designRemark.includes("무타공")) isNonPerf = true;
+            let isNon = String(row[formType==='sales'?14:2]||"").includes("무타공");
+            let pMatch = pSpecs.find(s => s[0]===d1 && s[1]===d2 && s[2]===t);
+            if (pMatch) {
+                let type = l >= 2 ? 'pipe' : 'short';
+                let spec = `${isNon?'무타공 ':''}${d1}x${d2}x${t}`;
+                let key = type + spec;
+                if(!map[key]) map[key] = { type, name: (type==='pipe'?'각관 ':'단척 ')+spec, spec, weight: 0, qty: 0 };
+                map[key].weight += w; if(type==='short') map[key].qty += q;
+                return;
             }
-
-            let matchedPipe = pipeSpecs.find(s => s[0] === p_d1 && s[1] === p_d2 && s[2] === p_t);
-            if (matchedPipe) {
-                let type = "", baseName = "", specStr = `${p_d1}x${p_d2}x${p_t}`;
-                if (p_len >= 2) { type = 'pipe'; baseName = `각관 ${specStr}`; } 
-                else if (p_len > 0 && p_len < 2) { type = 'short'; baseName = `단척 ${specStr}`; } 
-                else { continue; }
-                
-                if (isNonPerf) { specStr = `무타공 ${specStr}`; baseName = `[무타공] ${baseName}`; }
-                let key = `${type}_${specStr}`;
-                
-                // ★ qty: 0 기본값 추가
-                if(!resultMap[key]) resultMap[key] = { type: type, name: baseName, spec: specStr, weight: 0, qty: 0 };
-                resultMap[key].weight += weight;
-                
-                // ★ 단척(short)일 경우에만 수량(qty) 합산
-                if (type === 'short') {
-                    resultMap[key].qty += qty;
-                }
-                continue; 
+            let cMatch = cSpecs.find(s => s[0]===d1 && s[1]===d2 && s[2]===t);
+            if (cMatch) {
+                let spec = `${isNon?'무타공 ':''}${d1}x${d2}x${t}`;
+                let key = 'cbeam' + spec;
+                if(!map[key]) map[key] = { type:'cbeam', name: 'C형강 '+spec, spec, weight: 0, qty: 0 };
+                map[key].weight += w;
             }
-            
-            let matchedC = cSpecs.find(s => s[0] === c_d1 && s[1] === c_d2 && s[2] === c_t);
-            if (matchedC) {
-                let type = 'cbeam', specStr = `${c_d1}x${c_d2}x${c_t}`, baseName = `C형강 ${specStr}`;
-                if (isNonPerf) { specStr = `무타공 ${specStr}`; baseName = `[무타공] ${baseName}`; }
-                let key = `${type}_${specStr}`;
-                
-                // ★ qty: 0 기본값 추가
-                if(!resultMap[key]) resultMap[key] = { type: type, name: baseName, spec: specStr, weight: 0, qty: 0 };
-                resultMap[key].weight += weight;
-            }
-        }
-        let resultsArray = Object.values(resultMap).map(item => ({ ...item, weight: Math.round(item.weight * 1000) / 1000 }));
-        resultsArray.sort((a, b) => {
-            const order = { 'pipe': 1, 'short': 2, 'cbeam': 3, 'non_perf': 4 };
-            return order[a.type] - order[b.type];
         });
-        return resultsArray;
+        return Object.values(map).sort((a,b) => a.type.localeCompare(b.type));
     }
 
     function sendToGoogleSheet() {
-        const cards = document.querySelectorAll('.file-result-card[data-id]');
-        if (cards.length === 0) {
-            alert("전송할 데이터가 없습니다.");
-            return;
-        }
-
-        const selectedManager = document.getElementById('managerSelect').value;
-        if (!selectedManager) {
-            alert("⚠️ 상단의 '담당자'를 먼저 선택해주세요.");
-            document.getElementById('managerSelect').focus();
-            return;
-        }
+        const cards = document.querySelectorAll('.file-result-card');
+        const manager = document.getElementById('managerSelect').value;
+        if (cards.length === 0 || !manager) return alert("데이터 또는 담당자를 확인하세요.");
 
         const btn = document.querySelector('.submit-btn');
-        btn.innerText = "데이터 업로드 중... (다소 시간이 걸릴 수 있습니다)";
+        btn.innerText = "PDF 변환 및 업로드 중...";
         btn.disabled = true;
 
-        // ★ 반드시 본인의 구글 웹 앱 URL로 교체하세요! ★
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwIGKmmfyhPSBV3kgl8d9J9m7Amk3zHnuKhXg0NV1p5jVNvOtCCo-pvZW365liPmNXR/exec"; 
-
-        let fetchPromises = [];
+        const URL = "https://script.google.com/macros/s/AKfycbw1hCRqkz0YaqXMf-HO8ptnkL2oQhDWY-QeKlf3arSQ2AfxbY__b1eAZ54GL394OJpC/exec"; 
+        let now = new Date();
+        let yShort = String(now.getFullYear()).slice(-2);
+        let mStr = String(now.getMonth()+1).padStart(2,'0');
+        let dStr = String(now.getDate()).padStart(2,'0');
+        let hStr = String(now.getHours()).padStart(2,'0');
+        let minStr = String(now.getMinutes()).padStart(2,'0');
         
-        let today = new Date();
-        let yyyy = today.getFullYear();
-        // ★ 연도 뒤의 두 자리 추출, 시간/분 추출 추가
-        let yy = String(yyyy).slice(-2);
-        let mmNumber = today.getMonth() + 1; 
-        let mmString = String(mmNumber).padStart(2, '0');
-        let dd = String(today.getDate()).padStart(2, '0');
-        let hh = String(today.getHours()).padStart(2, '0');
-        let min = String(today.getMinutes()).padStart(2, '0');
-        
-        // ★ 스프레드시트 A열에 들어갈 날짜 포맷 (예: 26.04.08 14:32)
-        let dateString = `${yy}.${mmString}.${dd} ${hh}:${min}`;
+        let dateStr = `${yShort}.${mStr}.${dStr} ${hStr}:${minStr}`;
 
-        cards.forEach(card => {
-            let id = card.getAttribute('data-id');
-            let proj = document.getElementById(`proj_${id}`).value.trim() || "업체명 누락";
-            
+        let promises = Array.from(cards).map(card => {
+            let id = card.dataset.id;
             let specData = JSON.parse(document.getElementById(`specData_${id}`).value);
-            let accData = JSON.parse(document.getElementById(`accData_${id}`).value); 
+            let accData = JSON.parse(document.getElementById(`accData_${id}`).value);
+            let proj = document.getElementById(`proj_${id}`).value;
             
-            let fileData = document.getElementById(`fileData64_${id}`).value;
-            let fileName = document.getElementById(`fileName_${id}`).value;
-            let fileMime = document.getElementById(`fileMime_${id}`).value;
-
-            // ★ 파일명 앞에 날짜/시간과 현장명을 붙여 나중에 드라이브에서 식별하기 쉽게 만듦 (콜론 오류 방지를 위해 시, 분 사용)
-            let finalFileName = `[${yy}.${mmString}.${dd} ${hh}시${min}분]_${proj}_${fileName}`;
-
-            let pipes = [], shorts = [], cbeams = [];
-            
-            specData.forEach(item => {
-                let specStr = item.spec; 
-                if (item.type === 'pipe') pipes.push({ spec: specStr, weight: item.weight });
-                // ★ shorts 배열에 데이터 전송 시 수량(qty) 항목도 포함
-                else if (item.type === 'short') shorts.push({ spec: specStr, weight: item.weight, qty: item.qty });
-                else if (item.type === 'cbeam') cbeams.push({ spec: specStr, weight: item.weight });
-            });
-
-            const dataPayload = {
-                date: dateString,
-                year: yyyy,         
-                month: mmNumber,    
-                project: proj,
-                pipes: pipes,
-                shorts: shorts,
-                cbeams: cbeams,
+            let payload = {
+                date: dateStr, year: now.getFullYear(), month: now.getMonth()+1,
+                project: proj, manager, 
+                convertToPdf: true, // ★ 무조건 PDF 변환 수행
+                pipes: specData.filter(i=>i.type==='pipe'),
+                shorts: specData.filter(i=>i.type==='short'),
+                cbeams: specData.filter(i=>i.type==='cbeam'),
                 hasBracket: accData.hasBracket ? "O" : "",
                 hasBolt: accData.hasBolt ? "O" : "",
-                manager: selectedManager,
-                fileData: fileData,  // Base64 파일 데이터 
-                fileName: finalFileName,
-                mimeType: fileMime
+                fileData: document.getElementById(`fileData64_${id}`).value,
+                fileName: `[${dateStr.replace(/:/g,'시')}]_${proj}_${document.getElementById(`fileName_${id}`).value}`
             };
 
-            fetchPromises.push(
-                fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify(dataPayload)
-                })
-            );
+            return fetch(URL, { method:'POST', mode:'no-cors', body: JSON.stringify(payload) });
         });
 
-        Promise.all(fetchPromises).then(() => {
-            alert(`✅ 성공적으로 업로드 되었습니다!\n\n스프레드시트 S열에서 '📄 파일 열기'를 클릭해 원본을 확인하세요.`);
-            btn.innerText = "구글 시트로 일괄 업데이트";
-            btn.disabled = false;
-            
-            document.getElementById('resultArea').style.display = "none";
-            document.getElementById('resultList').innerHTML = ""; 
-            document.getElementById('excelFile').value = ''; 
-            globalFileCounter = 0;
-        }).catch(err => {
-            alert("전송 중 네트워크 오류가 발생했습니다.");
-            btn.innerText = "구글 시트로 일괄 업데이트";
+        Promise.all(promises).then(() => {
+            alert("✅ 모든 견적서가 PDF로 변환되어 업로드 완료되었습니다!");
+            location.reload();
+        }).catch(() => {
+            alert("❌ 오류 발생");
             btn.disabled = false;
         });
     }
 </script>
-
 </body>
 </html>
