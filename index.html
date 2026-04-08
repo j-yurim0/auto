@@ -37,6 +37,29 @@
             margin-bottom: 25px;
             color: #1f2937;
         }
+        
+        /* 담당자 선택 영역 스타일 */
+        .manager-section {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            background-color: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        .manager-section select {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            font-size: 1.05em;
+            font-weight: bold;
+            color: #334155;
+            cursor: pointer;
+        }
+        
         .form-type-selector {
             display: flex;
             justify-content: center;
@@ -179,10 +202,10 @@
             color: #0f766e;
             font-size: 1.15em;
         }
-        .spec-type-pipe { border-left: 4px solid #3b82f6; } /* 파란색 */
-        .spec-type-short { border-left: 4px solid #f59e0b; } /* 주황색 */
-        .spec-type-cbeam { border-left: 4px solid #10b981; } /* 초록색 */
-        .spec-type-non_perf { border-left: 4px solid #a855f7; } /* 보라색 (무타공) */
+        .spec-type-pipe { border-left: 4px solid #3b82f6; } 
+        .spec-type-short { border-left: 4px solid #f59e0b; } 
+        .spec-type-cbeam { border-left: 4px solid #10b981; } 
+        .spec-type-non_perf { border-left: 4px solid #a855f7; } 
 
         .action-buttons { display: flex; gap: 10px; margin-top: 20px; }
         button {
@@ -205,6 +228,23 @@
 
 <div class="container">
     <h2>🏭 생산 공정: 견적 중량 & 일정 관리기</h2>
+
+    <div class="manager-section">
+        <label for="managerSelect" style="font-weight: bold; color: #1e293b;">👤 담당자:</label>
+        <select id="managerSelect" onchange="saveManager()">
+            <option value="">담당자 선택</option>
+            <option value="오은규">오은규</option>
+            <option value="전화진">전화진</option>
+            <option value="김정석">김정석</option>
+            <option value="김동주">김동주</option>
+            <option value="김봉준">김봉준</option>
+            <option value="정준우">정준우</option>
+            <option value="황지훈">황지훈</option>
+            <option value="노성현">노성현</option>
+            <option value="권도희">권도희</option>
+        </select>
+        <span style="font-size: 0.85em; color: #64748b;">(한 번 선택하면 자동 기억됩니다)</span>
+    </div>
     
     <div class="form-type-selector">
         <input type="radio" id="typeSales" name="formType" value="sales" checked>
@@ -240,6 +280,20 @@
 
 <script>
     let globalFileCounter = 0;
+
+    // 페이지 로드 시 저장된 담당자 이름 불러오기
+    document.addEventListener('DOMContentLoaded', () => {
+        const savedManager = localStorage.getItem('selectedManager');
+        if (savedManager) {
+            document.getElementById('managerSelect').value = savedManager;
+        }
+    });
+
+    // 담당자 선택 시 브라우저에 저장
+    function saveManager() {
+        const manager = document.getElementById('managerSelect').value;
+        localStorage.setItem('selectedManager', manager);
+    }
 
     function escapeHtml(str) {
         if (!str) return "";
@@ -301,8 +355,6 @@
                     
                     let projectName = extractProjectName(workbook, formType);
                     let weights = extractWeightsBySpec(workbook, formType);
-                    
-                    // 브라켓 및 볼트 유무 추출 로직 호출
                     let accessories = extractAccessories(workbook, formType);
 
                     let specTagsHtml = "";
@@ -318,7 +370,6 @@
                         specTagsHtml = `<div style="color:#ef4444; font-size:0.9em; width:100%;">추출된 규격별 중량 데이터가 없습니다. (전부 0이거나 양식 다름)</div>`;
                     }
 
-                    // 브라켓, 볼트 표시 뱃지
                     let accBadgeHtml = "";
                     if (accessories.hasBracket) accBadgeHtml += `<span class="badge acc">브라켓 O</span>`;
                     if (accessories.hasBolt) accBadgeHtml += `<span class="badge acc">볼트 O</span>`;
@@ -352,7 +403,6 @@
                     `;
                     resultList.insertAdjacentHTML('beforeend', cardHtml);
                 } catch (error) {
-                    console.error("파일 처리 오류:", f.name, error);
                     let errorHtml = `
                         <div class="file-result-card" style="background-color: #fef2f2; border-color: #fecaca;">
                             <button class="delete-btn" onclick="this.parentElement.remove()">✕</button>
@@ -400,7 +450,6 @@
         return `${company}(${site})`;
     }
 
-    // 브라켓 및 볼트 유무 추출 로직
     function extractAccessories(workbook, formType) {
         let hasBracket = false;
         let hasBolt = false;
@@ -416,46 +465,41 @@
             if (!worksheet) return { hasBracket, hasBolt };
 
             let data = XLSX.utils.sheet_to_json(worksheet, {header: 1});
-            let currentAcc = ""; // 현재 어느 구역(브라켓/볼트)을 순회 중인지 기억
+            let currentAcc = ""; 
 
             for (let i = 0; i < data.length; i++) {
                 let row = data[i];
                 if (!row || row.length === 0) continue;
 
-                // 행 전체 데이터를 공백 없이 문자열로 결합하여 키워드 검사
                 let rowStr = row.join("").replace(/\s/g, ''); 
                 
                 if (formType === 'design') {
                     if (rowStr.includes("브라켓")) currentAcc = 'bracket';
                     if (rowStr.toUpperCase().includes("BOLTSET")) currentAcc = 'bolt';
                     
-                    // C열 (인덱스 2)에서 "소계" 확인
                     if (String(row[2] || "").includes("소계")) {
-                        let qty = getNum(row[9]); // J열 (인덱스 9) 수량
+                        let qty = getNum(row[9]); 
                         if (qty > 0) {
                             if (currentAcc === 'bracket') hasBracket = true;
                             if (currentAcc === 'bolt') hasBolt = true;
                         }
-                        currentAcc = ""; // 플래그 초기화
+                        currentAcc = ""; 
                     }
                 } else if (formType === 'sales') {
                     if (rowStr.includes("부자재")) currentAcc = 'bracket';
                     if (rowStr.toUpperCase().includes("BOLTSET")) currentAcc = 'bolt';
                     
-                    // B열 (인덱스 1)에서 "소계" 확인
                     if (String(row[1] || "").includes("소계")) {
-                        let qty = getNum(row[7]); // H열 (인덱스 7) 수량
+                        let qty = getNum(row[7]); 
                         if (qty > 0) {
                             if (currentAcc === 'bracket') hasBracket = true;
                             if (currentAcc === 'bolt') hasBolt = true;
                         }
-                        currentAcc = ""; // 플래그 초기화
+                        currentAcc = ""; 
                     }
                 }
             }
-        } catch(e) {
-            console.error("액세서리(브라켓/볼트) 추출 중 오류 발생:", e);
-        }
+        } catch(e) {}
         
         return { hasBracket, hasBolt };
     }
@@ -525,9 +569,7 @@
                 } else if (p_len > 0 && p_len < 2) { 
                     type = 'short';
                     baseName = `단척 ${specStr}`;
-                } else {
-                    continue; 
-                }
+                } else { continue; }
 
                 if (isNonPerf) {
                     specStr = `무타공 ${specStr}`;
@@ -577,12 +619,20 @@
             return;
         }
 
+        // 담당자가 선택되었는지 검사
+        const selectedManager = document.getElementById('managerSelect').value;
+        if (!selectedManager) {
+            alert("⚠️ 상단의 '담당자'를 먼저 선택해주세요.");
+            document.getElementById('managerSelect').focus();
+            return;
+        }
+
         const btn = document.querySelector('.submit-btn');
         btn.innerText = "데이터 연동 중...";
         btn.disabled = true;
 
-        // 반드시 본인의 구글 웹 앱 URL로 교체하세요!
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwF2Q7yqUsOlKa27OAdpjkoSitbHAdfiUnavYFlzUs8RezwzwQoryvFyeOfPJilCDdF/exec"; 
+        // 본인의 구글 웹 앱 URL로 반드시 교체하세요.
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyYYKGqBPnoorFtB6iiR9018aUBlrQiCpVBEWirJ9eGFPws2HwbXrj6pNMLkkM_Glk9/exec"; 
 
         let fetchPromises = [];
         
@@ -598,19 +648,17 @@
             let proj = document.getElementById(`proj_${id}`).value.trim() || "업체명 누락";
             
             let specData = JSON.parse(document.getElementById(`specData_${id}`).value);
-            let accData = JSON.parse(document.getElementById(`accData_${id}`).value); // 브라켓, 볼트 데이터
+            let accData = JSON.parse(document.getElementById(`accData_${id}`).value); 
             
             let pipes = [], shorts = [], cbeams = [];
             
             specData.forEach(item => {
                 let specStr = item.spec; 
-                
                 if (item.type === 'pipe') pipes.push({ spec: specStr, weight: item.weight });
                 else if (item.type === 'short') shorts.push({ spec: specStr, weight: item.weight });
                 else if (item.type === 'cbeam') cbeams.push({ spec: specStr, weight: item.weight });
             });
 
-            // 페이로드에 hasBracket, hasBolt 문자열 값 포함하여 전송
             const dataPayload = {
                 date: dateString,
                 year: yyyy,         
@@ -620,7 +668,8 @@
                 shorts: shorts,
                 cbeams: cbeams,
                 hasBracket: accData.hasBracket ? "O" : "",
-                hasBolt: accData.hasBolt ? "O" : ""
+                hasBolt: accData.hasBolt ? "O" : "",
+                manager: selectedManager // 담당자 데이터 추가
             };
 
             fetchPromises.push(
