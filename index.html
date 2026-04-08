@@ -38,170 +38,80 @@
             color: #1f2937;
         }
         
-        /* 담당자 선택 영역 스타일 */
         .manager-section {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 20px;
-            background-color: #f8fafc;
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #e2e8f0;
+            display: flex; align-items: center; justify-content: center; gap: 15px;
+            margin-bottom: 20px; background-color: #f8fafc; padding: 15px;
+            border-radius: 8px; border: 1px solid #e2e8f0;
         }
         .manager-section select {
-            padding: 8px 12px;
-            border-radius: 6px;
-            border: 1px solid #cbd5e1;
-            font-size: 1.05em;
-            font-weight: bold;
-            color: #334155;
-            cursor: pointer;
+            padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1;
+            font-size: 1.05em; font-weight: bold; color: #334155; cursor: pointer;
         }
         
         .form-type-selector {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-bottom: 20px;
+            display: flex; justify-content: center; gap: 20px; margin-bottom: 20px;
         }
         .form-type-selector label {
-            font-size: 1.05em;
-            font-weight: bold;
-            cursor: pointer;
-            padding: 10px 20px;
-            border: 2px solid var(--primary-color);
-            border-radius: 8px;
-            color: var(--primary-color);
-            transition: all 0.2s;
-            background: white;
+            font-size: 1.05em; font-weight: bold; cursor: pointer; padding: 10px 20px;
+            border: 2px solid var(--primary-color); border-radius: 8px;
+            color: var(--primary-color); transition: all 0.2s; background: white;
         }
         .form-type-selector input[type="radio"] { display: none; }
         .form-type-selector input[type="radio"]:checked + label {
-            background-color: var(--primary-color);
-            color: white;
+            background-color: var(--primary-color); color: white;
             box-shadow: 0 4px 6px rgba(13, 148, 136, 0.2);
         }
         .upload-section { 
-            margin-bottom: 20px; 
-            padding: 40px 20px; 
-            border: 2px dashed var(--primary-color); 
-            background-color: var(--bg-color);
-            text-align: center; 
-            border-radius: 8px; 
-            cursor: pointer;
-            transition: all 0.3s;
+            margin-bottom: 20px; padding: 40px 20px; border: 2px dashed var(--primary-color); 
+            background-color: var(--bg-color); text-align: center; border-radius: 8px; 
+            cursor: pointer; transition: all 0.3s;
         }
         .upload-section.dragover {
-            background-color: #d1fae5;
-            border-color: var(--primary-dark);
+            background-color: #d1fae5; border-color: var(--primary-dark);
         }
         .fake-btn {
-            display: inline-block;
-            margin-top: 15px;
-            padding: 10px 20px;
-            background: #fff;
-            border: 1px solid var(--primary-color);
-            color: var(--primary-color);
-            border-radius: 5px;
-            font-weight: bold;
-            pointer-events: none; 
+            display: inline-block; margin-top: 15px; padding: 10px 20px; background: #fff;
+            border: 1px solid var(--primary-color); color: var(--primary-color);
+            border-radius: 5px; font-weight: bold; pointer-events: none; 
         }
-        .result-section { 
-            margin-top: 20px; 
-            display: none; 
-        }
+        .result-section { margin-top: 20px; display: none; }
         .file-result-card {
-            border: 1px solid #e5e7eb;
-            padding: 20px;
-            margin-bottom: 15px;
-            border-radius: 8px;
-            background-color: #fafafa;
-            position: relative;
+            border: 1px solid #e5e7eb; padding: 20px; margin-bottom: 15px;
+            border-radius: 8px; background-color: #fafafa; position: relative;
         }
         .file-name-title {
-            font-size: 0.95em;
-            color: #4b5563;
-            margin-bottom: 12px;
-            word-break: break-all;
-            padding-right: 30px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
+            font-size: 0.95em; color: #4b5563; margin-bottom: 12px;
+            word-break: break-all; padding-right: 30px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
         }
         .badge {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 0.8em;
-            font-weight: bold;
+            display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold;
         }
         .badge.sales { background-color: #dbeafe; color: #1e40af; }
         .badge.design { background-color: #e0e7ff; color: #3730a3; }
         .badge.acc { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
         
         .delete-btn {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: none;
-            border: none;
-            color: #9ca3af;
-            font-size: 1.2em;
-            cursor: pointer;
-            font-weight: bold;
-            transition: color 0.2s;
+            position: absolute; top: 15px; right: 15px; background: none; border: none;
+            color: #9ca3af; font-size: 1.2em; cursor: pointer; font-weight: bold; transition: color 0.2s;
         }
         .delete-btn:hover { color: #ef4444; }
         
-        .info-group {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
+        .info-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
         .input-field {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            font-size: 1em;
-            box-sizing: border-box;
-            background-color: #fff;
-            font-weight: bold;
-            color: #1f2937;
+            width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px;
+            font-size: 1em; box-sizing: border-box; background-color: #fff; font-weight: bold; color: #1f2937;
         }
 
         .spec-list-wrapper {
-            background: white;
-            padding: 15px;
-            border-radius: 6px;
-            border: 1px solid #e5e7eb;
+            background: white; padding: 15px; border-radius: 6px; border: 1px solid #e5e7eb;
         }
-        .spec-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 10px;
-        }
+        .spec-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
         .spec-tag {
-            background: #f8fafc;
-            border: 1px solid #cbd5e1;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 0.9em;
-            color: #334155;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-            display: flex;
-            align-items: center;
-            gap: 5px;
+            background: #f8fafc; border: 1px solid #cbd5e1; padding: 6px 12px;
+            border-radius: 6px; font-size: 0.9em; color: #334155; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            display: flex; align-items: center; gap: 5px;
         }
-        .spec-tag strong {
-            color: #0f766e;
-            font-size: 1.15em;
-        }
+        .spec-tag strong { color: #0f766e; font-size: 1.15em; }
         .spec-type-pipe { border-left: 4px solid #3b82f6; } 
         .spec-type-short { border-left: 4px solid #f59e0b; } 
         .spec-type-cbeam { border-left: 4px solid #10b981; } 
@@ -209,18 +119,14 @@
 
         .action-buttons { display: flex; gap: 10px; margin-top: 20px; }
         button {
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            padding: 15px;
-            font-size: 1.1em;
-            font-weight: bold;
-            transition: all 0.2s;
+            border: none; border-radius: 6px; cursor: pointer; padding: 15px;
+            font-size: 1.1em; font-weight: bold; transition: all 0.2s;
         }
         button.reset-btn { background-color: #9ca3af; color: white; flex: 1; }
         button.reset-btn:hover { background-color: #6b7280; }
         button.submit-btn { background-color: var(--primary-color); color: white; flex: 2; }
         button.submit-btn:hover { background-color: var(--primary-dark); }
+        button.submit-btn:disabled { background-color: #94a3b8; cursor: not-allowed; }
         .info-text { font-size: 0.9em; color: #6b7280; text-align: center; margin-top: 15px; }
     </style>
 </head>
@@ -271,10 +177,10 @@
         <div id="resultList"></div>
         
         <div class="action-buttons">
-            <button class="reset-btn" onclick="clearList()">목록 초기화</button>
-            <button class="submit-btn" onclick="sendToGoogleSheet()">구글 시트로 일괄 업데이트</button>
+            <button class="reset-btn" onclick="clearList()" id="resetBtn">목록 초기화</button>
+            <button class="submit-btn" onclick="sendToGoogleSheet()" id="submitBtn">구글 시트로 일괄 업데이트</button>
         </div>
-        <p class="info-text">※ 중량이 0인 규격은 자동으로 제외되어 표출됩니다.</p>
+        <p class="info-text">※ 파일 용량이 큰 경우 PDF 변환에 다소 시간이 소요될 수 있습니다.</p>
     </div>
 </div>
 
@@ -365,7 +271,7 @@
                             `;
                         });
                     } else {
-                        specTagsHtml = `<div style="color:#ef4444; font-size:0.9em; width:100%;">추출된 규격별 중량 데이터가 없습니다. (전부 0이거나 양식 다름)</div>`;
+                        specTagsHtml = `<div style="color:#ef4444; font-size:0.9em; width:100%;">추출된 규격별 중량 데이터가 없습니다.</div>`;
                     }
 
                     let accBadgeHtml = "";
@@ -398,7 +304,7 @@
                             <input type="hidden" id="specData_${currentId}" value='${JSON.stringify(weights)}'>
                             <input type="hidden" id="accData_${currentId}" value='${JSON.stringify(accessories)}'>
                             
-                            <!-- 구글 드라이브 업로드를 위해 파일 데이터를 Base64로 저장할 숨김 필드 -->
+                            <!-- 원본 엑셀 파일을 유지하기 위해 다시 Base64로 저장합니다 -->
                             <input type="hidden" id="fileData64_${currentId}" value="">
                             <input type="hidden" id="fileName_${currentId}" value="${escapeHtml(f.name)}">
                             <input type="hidden" id="fileMime_${currentId}" value="${f.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}">
@@ -532,7 +438,6 @@
             let weight = getNum(row[10]); 
             if (weight <= 0) continue;
             
-            // ★ J열(인덱스 9)에서 수량 데이터 추출
             let qty = getNum(row[9]); 
             
             let p_d1, p_d2, p_t, p_len;
@@ -561,14 +466,9 @@
                 if (isNonPerf) { specStr = `무타공 ${specStr}`; baseName = `[무타공] ${baseName}`; }
                 let key = `${type}_${specStr}`;
                 
-                // ★ qty: 0 기본값 추가
                 if(!resultMap[key]) resultMap[key] = { type: type, name: baseName, spec: specStr, weight: 0, qty: 0 };
                 resultMap[key].weight += weight;
-                
-                // ★ 단척(short)일 경우에만 수량(qty) 합산
-                if (type === 'short') {
-                    resultMap[key].qty += qty;
-                }
+                if (type === 'short') resultMap[key].qty += qty;
                 continue; 
             }
             
@@ -578,7 +478,6 @@
                 if (isNonPerf) { specStr = `무타공 ${specStr}`; baseName = `[무타공] ${baseName}`; }
                 let key = `${type}_${specStr}`;
                 
-                // ★ qty: 0 기본값 추가
                 if(!resultMap[key]) resultMap[key] = { type: type, name: baseName, spec: specStr, weight: 0, qty: 0 };
                 resultMap[key].weight += weight;
             }
@@ -591,9 +490,12 @@
         return resultsArray;
     }
 
-    function sendToGoogleSheet() {
+    // ★ 파일 병렬 전송이 아닌 순차적 전송(Sequential Fetch)으로 변경하여 부하 분산 및 진행상황 표시 ★
+    async function sendToGoogleSheet() {
         const cards = document.querySelectorAll('.file-result-card[data-id]');
-        if (cards.length === 0) {
+        const totalFiles = cards.length;
+        
+        if (totalFiles === 0) {
             alert("전송할 데이터가 없습니다.");
             return;
         }
@@ -605,18 +507,17 @@
             return;
         }
 
-        const btn = document.querySelector('.submit-btn');
-        btn.innerText = "데이터 업로드 중... (다소 시간이 걸릴 수 있습니다)";
-        btn.disabled = true;
+        const submitBtn = document.getElementById('submitBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        
+        submitBtn.disabled = true;
+        resetBtn.disabled = true;
 
         // ★ 반드시 본인의 구글 웹 앱 URL로 교체하세요! ★
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwIGKmmfyhPSBV3kgl8d9J9m7Amk3zHnuKhXg0NV1p5jVNvOtCCo-pvZW365liPmNXR/exec"; 
 
-        let fetchPromises = [];
-        
         let today = new Date();
         let yyyy = today.getFullYear();
-        // ★ 연도 뒤의 두 자리 추출, 시간/분 추출 추가
         let yy = String(yyyy).slice(-2);
         let mmNumber = today.getMonth() + 1; 
         let mmString = String(mmNumber).padStart(2, '0');
@@ -624,13 +525,17 @@
         let hh = String(today.getHours()).padStart(2, '0');
         let min = String(today.getMinutes()).padStart(2, '0');
         
-        // ★ 스프레드시트 A열에 들어갈 날짜 포맷 (예: 26.04.08 14:32)
         let dateString = `${yy}.${mmString}.${dd} ${hh}:${min}`;
-
-        cards.forEach(card => {
+        
+        // 여러 파일을 하나씩 순차적으로 업로드
+        for (let i = 0; i < totalFiles; i++) {
+            const card = cards[i];
             let id = card.getAttribute('data-id');
             let proj = document.getElementById(`proj_${id}`).value.trim() || "업체명 누락";
             
+            // UI에 진행상황 표시 (멈춰있지 않음을 사용자에게 인지시킴)
+            submitBtn.innerText = `업로드 및 PDF 변환 중... (${i + 1}/${totalFiles} 완료 대기)`;
+
             let specData = JSON.parse(document.getElementById(`specData_${id}`).value);
             let accData = JSON.parse(document.getElementById(`accData_${id}`).value); 
             
@@ -638,59 +543,50 @@
             let fileName = document.getElementById(`fileName_${id}`).value;
             let fileMime = document.getElementById(`fileMime_${id}`).value;
 
-            // ★ 파일명 앞에 날짜/시간과 현장명을 붙여 나중에 드라이브에서 식별하기 쉽게 만듦 (콜론 오류 방지를 위해 시, 분 사용)
             let finalFileName = `[${yy}.${mmString}.${dd} ${hh}시${min}분]_${proj}_${fileName}`;
 
             let pipes = [], shorts = [], cbeams = [];
-            
             specData.forEach(item => {
                 let specStr = item.spec; 
                 if (item.type === 'pipe') pipes.push({ spec: specStr, weight: item.weight });
-                // ★ shorts 배열에 데이터 전송 시 수량(qty) 항목도 포함
                 else if (item.type === 'short') shorts.push({ spec: specStr, weight: item.weight, qty: item.qty });
                 else if (item.type === 'cbeam') cbeams.push({ spec: specStr, weight: item.weight });
             });
 
             const dataPayload = {
-                date: dateString,
-                year: yyyy,         
-                month: mmNumber,    
-                project: proj,
-                pipes: pipes,
-                shorts: shorts,
-                cbeams: cbeams,
+                date: dateString, year: yyyy, month: mmNumber, project: proj,
+                pipes: pipes, shorts: shorts, cbeams: cbeams,
                 hasBracket: accData.hasBracket ? "O" : "",
                 hasBolt: accData.hasBolt ? "O" : "",
                 manager: selectedManager,
-                fileData: fileData,  // Base64 파일 데이터 
+                fileData: fileData,  // 엑셀 원본 Base64 전송
                 fileName: finalFileName,
                 mimeType: fileMime
             };
 
-            fetchPromises.push(
-                fetch(GOOGLE_SCRIPT_URL, {
+            try {
+                // 하나를 보내고 서버에서 완료될 때까지 대기(await)한 후 다음 파일로 넘어감
+                await fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify(dataPayload)
-                })
-            );
-        });
+                });
+            } catch (err) {
+                console.error("전송 오류:", err);
+            }
+        }
 
-        Promise.all(fetchPromises).then(() => {
-            alert(`✅ 성공적으로 업로드 되었습니다!\n\n스프레드시트 S열에서 '📄 파일 열기'를 클릭해 원본을 확인하세요.`);
-            btn.innerText = "구글 시트로 일괄 업데이트";
-            btn.disabled = false;
-            
-            document.getElementById('resultArea').style.display = "none";
-            document.getElementById('resultList').innerHTML = ""; 
-            document.getElementById('excelFile').value = ''; 
-            globalFileCounter = 0;
-        }).catch(err => {
-            alert("전송 중 네트워크 오류가 발생했습니다.");
-            btn.innerText = "구글 시트로 일괄 업데이트";
-            btn.disabled = false;
-        });
+        // 모든 파일 업로드 완료 시
+        alert(`✅ ${totalFiles}개의 엑셀 파일이 성공적으로 업로드 및 변환되었습니다!\n\n스프레드시트 S열에서 PDF를 확인하세요.`);
+        submitBtn.innerText = "구글 시트로 일괄 업데이트";
+        submitBtn.disabled = false;
+        resetBtn.disabled = false;
+        
+        document.getElementById('resultArea').style.display = "none";
+        document.getElementById('resultList').innerHTML = ""; 
+        document.getElementById('excelFile').value = ''; 
+        globalFileCounter = 0;
     }
 </script>
 
