@@ -531,9 +531,14 @@
             if (!row || row.length === 0) continue;
             let weight = getNum(row[10]); 
             if (weight <= 0) continue;
+            
+            // ★ J열(인덱스 9)에서 수량 데이터 추출
+            let qty = getNum(row[9]); 
+            
             let p_d1, p_d2, p_t, p_len;
             let c_d1, c_d2, c_t;
             let isNonPerf = false; 
+            
             if (formType === 'sales') {
                 p_d1 = getNum(row[2]); p_d2 = getNum(row[3]); p_t = getNum(row[4]); p_len = getNum(row[5]);
                 c_d1 = getNum(row[2]); c_d2 = getNum(row[3]); c_t = getNum(row[5]);
@@ -545,24 +550,36 @@
                 let designRemark = String(row[2] || "").replace(/\s/g, ''); 
                 if (designRemark.includes("무타공")) isNonPerf = true;
             }
+
             let matchedPipe = pipeSpecs.find(s => s[0] === p_d1 && s[1] === p_d2 && s[2] === p_t);
             if (matchedPipe) {
                 let type = "", baseName = "", specStr = `${p_d1}x${p_d2}x${p_t}`;
                 if (p_len >= 2) { type = 'pipe'; baseName = `각관 ${specStr}`; } 
                 else if (p_len > 0 && p_len < 2) { type = 'short'; baseName = `단척 ${specStr}`; } 
                 else { continue; }
+                
                 if (isNonPerf) { specStr = `무타공 ${specStr}`; baseName = `[무타공] ${baseName}`; }
                 let key = `${type}_${specStr}`;
-                if(!resultMap[key]) resultMap[key] = { type: type, name: baseName, spec: specStr, weight: 0 };
+                
+                // ★ qty: 0 기본값 추가
+                if(!resultMap[key]) resultMap[key] = { type: type, name: baseName, spec: specStr, weight: 0, qty: 0 };
                 resultMap[key].weight += weight;
+                
+                // ★ 단척(short)일 경우에만 수량(qty) 합산
+                if (type === 'short') {
+                    resultMap[key].qty += qty;
+                }
                 continue; 
             }
+            
             let matchedC = cSpecs.find(s => s[0] === c_d1 && s[1] === c_d2 && s[2] === c_t);
             if (matchedC) {
                 let type = 'cbeam', specStr = `${c_d1}x${c_d2}x${c_t}`, baseName = `C형강 ${specStr}`;
                 if (isNonPerf) { specStr = `무타공 ${specStr}`; baseName = `[무타공] ${baseName}`; }
                 let key = `${type}_${specStr}`;
-                if(!resultMap[key]) resultMap[key] = { type: type, name: baseName, spec: specStr, weight: 0 };
+                
+                // ★ qty: 0 기본값 추가
+                if(!resultMap[key]) resultMap[key] = { type: type, name: baseName, spec: specStr, weight: 0, qty: 0 };
                 resultMap[key].weight += weight;
             }
         }
@@ -593,16 +610,22 @@
         btn.disabled = true;
 
         // ★ 반드시 본인의 구글 웹 앱 URL로 교체하세요! ★
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzKtD_VqDVm0MOfbPI_kRqUsM3ofwSOh4cDIdNWzdT3mDekOW9MYEFYSgphxnbwib7g/exec"; 
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzoHFVK1S7wmxiM18YSxrNwwzhOABYzNj7hztmj9nUWjuGuyDATbKgcL03TkwnemeYO/exec"; 
 
         let fetchPromises = [];
         
         let today = new Date();
         let yyyy = today.getFullYear();
+        // ★ 연도 뒤의 두 자리 추출, 시간/분 추출 추가
+        let yy = String(yyyy).slice(-2);
         let mmNumber = today.getMonth() + 1; 
         let mmString = String(mmNumber).padStart(2, '0');
         let dd = String(today.getDate()).padStart(2, '0');
-        let dateString = `${yyyy}.${mmString}.${dd}`;
+        let hh = String(today.getHours()).padStart(2, '0');
+        let min = String(today.getMinutes()).padStart(2, '0');
+        
+        // ★ 스프레드시트 A열에 들어갈 날짜 포맷 (예: 26.04.08 14:32)
+        let dateString = `${yy}.${mmString}.${dd} ${hh}:${min}`;
 
         cards.forEach(card => {
             let id = card.getAttribute('data-id');
@@ -615,15 +638,16 @@
             let fileName = document.getElementById(`fileName_${id}`).value;
             let fileMime = document.getElementById(`fileMime_${id}`).value;
 
-            // 파일명 앞에 날짜와 현장명을 붙여 나중에 드라이브에서 식별하기 쉽게 만듦
-            let finalFileName = `[${dateString}]_${proj}_${fileName}`;
+            // ★ 파일명 앞에 날짜/시간과 현장명을 붙여 나중에 드라이브에서 식별하기 쉽게 만듦 (콜론 오류 방지를 위해 시, 분 사용)
+            let finalFileName = `[${yy}.${mmString}.${dd} ${hh}시${min}분]_${proj}_${fileName}`;
 
             let pipes = [], shorts = [], cbeams = [];
             
             specData.forEach(item => {
                 let specStr = item.spec; 
                 if (item.type === 'pipe') pipes.push({ spec: specStr, weight: item.weight });
-                else if (item.type === 'short') shorts.push({ spec: specStr, weight: item.weight });
+                // ★ shorts 배열에 데이터 전송 시 수량(qty) 항목도 포함
+                else if (item.type === 'short') shorts.push({ spec: specStr, weight: item.weight, qty: item.qty });
                 else if (item.type === 'cbeam') cbeams.push({ spec: specStr, weight: item.weight });
             });
 
