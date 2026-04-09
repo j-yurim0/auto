@@ -490,7 +490,7 @@
     }
 
     // ★ 투트랙(Two-Track) 업로드 방식이 적용된 핵심 함수 ★
-    async function sendToGoogleSheet() {
+    async function sendToGoogleSheet() { 
         const cards = document.querySelectorAll('.file-result-card[data-id]');
         const totalFiles = cards.length;
         
@@ -513,7 +513,7 @@
         resetBtn.disabled = true;
 
         // ★★★ 본인의 구글 웹 앱 URL로 반드시 교체하세요! ★★★
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxUL15iVqFDulZF7qZjowYHUDX-A4PlaBqqxGi5kxjBaxDEYcaHSTkyJWW9-r-btLiQ/exec"; 
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxtCKTCgHzHk82P30L8VKaTgWDAUmS8lguViXrbQXjsPJFJ1eapRroyj5iuHD6Dy7i7/exec"; 
 
         let today = new Date();
         let yyyy = today.getFullYear();
