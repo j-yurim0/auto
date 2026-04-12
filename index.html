@@ -180,7 +180,7 @@
             <button class="reset-btn" onclick="clearList()" id="resetBtn">목록 초기화</button>
             <button class="submit-btn" onclick="sendToGoogleSheet()" id="submitBtn">구글 시트로 일괄 업데이트</button>
         </div>
-        <p class="info-text">※ 투트랙(Two-Track) 백그라운드 업로드 적용 완료</p>
+        <p class="info-text">※ 투트랙(Two-Track) 백그라운드 업로드 자동 적용됨</p>
     </div>
 </div>
 
@@ -311,7 +311,6 @@
                     `;
                     resultList.insertAdjacentHTML('beforeend', cardHtml);
 
-                    // 파일을 Base64 문자열로 변환하여 저장 (백그라운드 전송용 원본 파일)
                     let base64Reader = new FileReader();
                     base64Reader.onload = function(b64Event) {
                         let base64String = b64Event.target.result.split(',')[1];
@@ -367,6 +366,7 @@
         return `${company}(${site})`;
     }
 
+    // ★ 브라켓, 부자재 등 다양한 텍스트를 포괄적으로 인식하도록 업그레이드 됨 ★
     function extractAccessories(workbook, formType) {
         let hasBracket = false;
         let hasBolt = false;
@@ -380,13 +380,21 @@
             if (!worksheet) return { hasBracket, hasBolt };
             let data = XLSX.utils.sheet_to_json(worksheet, {header: 1});
             let currentAcc = ""; 
+            
             for (let i = 0; i < data.length; i++) {
                 let row = data[i];
                 if (!row || row.length === 0) continue;
+                
                 let rowStr = row.join("").replace(/\s/g, ''); 
+                
+                if (rowStr.includes("부자재") || rowStr.includes("브라켓")) {
+                    currentAcc = 'bracket';
+                }
+                if (rowStr.toUpperCase().includes("BOLTSET") || rowStr.includes("볼트")) {
+                    currentAcc = 'bolt';
+                }
+
                 if (formType === 'design') {
-                    if (rowStr.includes("브라켓")) currentAcc = 'bracket';
-                    if (rowStr.toUpperCase().includes("BOLTSET")) currentAcc = 'bolt';
                     if (String(row[2] || "").includes("소계")) {
                         let qty = getNum(row[9]); 
                         if (qty > 0) {
@@ -396,8 +404,6 @@
                         currentAcc = ""; 
                     }
                 } else if (formType === 'sales') {
-                    if (rowStr.includes("부자재")) currentAcc = 'bracket';
-                    if (rowStr.toUpperCase().includes("BOLTSET")) currentAcc = 'bolt';
                     if (String(row[1] || "").includes("소계")) {
                         let qty = getNum(row[7]); 
                         if (qty > 0) {
@@ -489,8 +495,7 @@
         return resultsArray;
     }
 
-    // ★ 투트랙(Two-Track) 업로드 방식이 적용된 핵심 함수 ★
-    async function sendToGoogleSheet() { 
+    async function sendToGoogleSheet() {
         const cards = document.querySelectorAll('.file-result-card[data-id]');
         const totalFiles = cards.length;
         
@@ -512,7 +517,7 @@
         submitBtn.disabled = true;
         resetBtn.disabled = true;
 
-        // ★★★ 본인의 구글 웹 앱 URL로 반드시 교체하세요! ★★★
+        // ★★★ 주의: 본인의 최신 구글 웹 앱 배포 URL로 변경하세요! ★★★
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby09fQmtSm5OtPX0qorH0HTy22Qlb2Jf8MQtHUeYB6t32TMaOfMqoNH24F2Lz198vBV/exec"; 
 
         let today = new Date();
@@ -537,7 +542,6 @@
             let fileName = document.getElementById(`fileName_${id}`).value;
             let finalFileName = `[${yy}.${mmString}.${dd} ${hh}시${min}분]_${proj}_${fileName}`;
             
-            // S열에 남길 임시 텍스트이자, 백그라운드 스크립트가 행을 찾을 고유 ID
             let tempStatusText = `⏳ [${fileName}] 원본 백업 진행 중...`;
 
             let pipes = [], shorts = [], cbeams = [];
@@ -548,7 +552,6 @@
                 else if (item.type === 'cbeam') cbeams.push({ spec: specStr, weight: item.weight });
             });
 
-            // 페이로드 1: 가벼운 데이터 (즉시 시트 기록용)
             const dataPayload = {
                 action: "upload_data",
                 date: dateString, year: yyyy, month: mmNumber, project: proj,
@@ -559,7 +562,6 @@
                 tempText: tempStatusText
             };
 
-            // 페이로드 2: 무거운 파일 (백그라운드 업로드용)
             const filePayload = {
                 action: "upload_file",
                 year: yyyy, month: mmNumber,
@@ -569,8 +571,8 @@
             };
 
             try {
-                // 트랙 1: 데이터 삽입 (0.5초 컷)
-                submitBtn.style.backgroundColor = "#f59e0b"; // 주황색
+                // 트랙 1: 데이터 삽입
+                submitBtn.style.backgroundColor = "#f59e0b"; 
                 submitBtn.innerText = `[${i + 1}/${totalFiles}] ⚡ 데이터 시트 기록 중... (1초 대기)`;
                 
                 await fetch(GOOGLE_SCRIPT_URL, {
@@ -578,8 +580,8 @@
                     body: JSON.stringify(dataPayload)
                 });
 
-                // 트랙 2: 원본 엑셀 백업 (시간 소요)
-                submitBtn.style.backgroundColor = "#0ea5e9"; // 파란색
+                // 트랙 2: 엑셀 파일 업로드
+                submitBtn.style.backgroundColor = "#0ea5e9"; 
                 submitBtn.innerText = `✅ 시트 기록 완료! [${i + 1}/${totalFiles}] 원본 파일 백업 중... (창을 닫지 마세요)`;
                 
                 await fetch(GOOGLE_SCRIPT_URL, {
@@ -592,7 +594,6 @@
             }
         }
 
-        // 모든 작업 완료
         submitBtn.style.backgroundColor = "var(--primary-color)";
         submitBtn.innerText = "구글 시트로 일괄 업데이트";
         alert(`🎉 모든 데이터 기록 및 파일 백업이 완벽하게 끝났습니다!`);
