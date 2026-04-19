@@ -38,13 +38,23 @@
         .spec-type-short { border-left: 4px solid #f59e0b; } 
         .spec-type-cbeam { border-left: 4px solid #10b981; } 
         .spec-type-non_perf { border-left: 4px solid #a855f7; } 
-        .action-buttons { display: flex; gap: 10px; margin-top: 20px; }
-        button { border: none; border-radius: 6px; cursor: pointer; padding: 15px; font-size: 1.1em; font-weight: bold; transition: all 0.2s; }
-        button.reset-btn { background-color: #9ca3af; color: white; flex: 1; }
+        
+        /* ★ 버튼 디자인 수정 ★ */
+        .action-buttons { display: flex; gap: 10px; margin-top: 20px; align-items: stretch; }
+        button { border: none; border-radius: 6px; cursor: pointer; padding: 15px 10px; font-size: 1.05em; font-weight: bold; transition: all 0.2s; line-height: 1.4; }
+        button:disabled { cursor: not-allowed; opacity: 0.7; }
+        
+        button.reset-btn { background-color: #9ca3af; color: white; flex: 0.8; }
         button.reset-btn:hover { background-color: #6b7280; }
-        button.submit-btn { background-color: var(--primary-color); color: white; flex: 2; }
-        button.submit-btn:hover { background-color: var(--primary-dark); }
-        button.submit-btn:disabled { background-color: #94a3b8; cursor: not-allowed; }
+        
+        /* 일괄 업데이트 버튼 (파란색 계열) */
+        button.submit-all-btn { background-color: #3b82f6; color: white; flex: 1.3; }
+        button.submit-all-btn:hover:not(:disabled) { background-color: #2563eb; }
+        
+        /* 중량만 업데이트 버튼 (황금/주황색 계열로 강조, 그림자 및 스케일 효과) */
+        button.submit-weight-btn { background-color: #f59e0b; color: white; flex: 1.6; border: 2px solid #d97706; box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3); font-size: 1.1em;}
+        button.submit-weight-btn:hover:not(:disabled) { background-color: #d97706; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(245, 158, 11, 0.4); }
+
         .info-text { font-size: 0.9em; color: #6b7280; text-align: center; margin-top: 15px; }
     </style>
 </head>
@@ -91,10 +101,17 @@
             📋 추출된 현장별 규격 중량 데이터
         </div>
         <div id="resultList"></div>
+        
         <div class="action-buttons">
-            <button class="reset-btn" onclick="clearList()" id="resetBtn">목록 초기화</button>
-            <button class="submit-btn" onclick="sendToGoogleSheet()" id="submitBtn">구글 시트로 일괄 업데이트</button>
+            <button class="reset-btn" onclick="clearList()" id="resetBtn">초기화</button>
+            <button class="submit-all-btn" onclick="sendToGoogleSheet('all')" id="submitAllBtn">
+                전체 업데이트<br><span style="font-size: 0.75em; font-weight: normal;">(메인 + SAP)</span>
+            </button>
+            <button class="submit-weight-btn" onclick="sendToGoogleSheet('weight')" id="submitWeightBtn">
+                ⭐ 중량만 업데이트<br><span style="font-size: 0.8em; font-weight: normal;">(메인 시트만)</span>
+            </button>
         </div>
+        
         <p class="info-text">※ 투트랙(Two-Track) 백그라운드 업로드 자동 적용됨</p>
     </div>
 </div>
@@ -193,7 +210,6 @@
                             
                             <div class="info-group">
                                 <input type="text" id="proj_${currentId}" class="input-field" value="${escapeHtml(projectName)}" placeholder="프로젝트명(현장명)">
-                                
                                 <label style="display: flex; align-items: center; gap: 8px; margin-top: 5px; cursor: pointer; color: #d97706; font-weight: bold; background: #fffbeb; padding: 10px; border-radius: 6px; border: 1px solid #fde68a;">
                                     <input type="checkbox" id="rev_${currentId}" style="width: 18px; height: 18px;">
                                     🔄 이 견적서는 수정본입니다 (기존 내역 '수정' 체크 및 '(수정)' 텍스트 추가)
@@ -367,7 +383,8 @@
         return resultsArray;
     }
 
-    async function sendToGoogleSheet() {
+    // ★ 어떤 버튼을 눌렀는지 파라미터(updateMode)를 전달받음 ★
+    async function sendToGoogleSheet(updateMode) {
         const cards = document.querySelectorAll('.file-result-card[data-id]');
         const totalFiles = cards.length;
         if (totalFiles === 0) return alert("전송할 데이터가 없습니다.");
@@ -378,12 +395,17 @@
             return document.getElementById('managerSelect').focus();
         }
 
-        const submitBtn = document.getElementById('submitBtn');
+        const submitWeightBtn = document.getElementById('submitWeightBtn');
+        const submitAllBtn = document.getElementById('submitAllBtn');
         const resetBtn = document.getElementById('resetBtn');
-        submitBtn.disabled = true; resetBtn.disabled = true;
+        
+        // 버튼 비활성화
+        submitWeightBtn.disabled = true; 
+        submitAllBtn.disabled = true; 
+        resetBtn.disabled = true;
 
-        // ★★★ 주의: 본인의 최신 구글 웹 앱 배포 URL로 반드시 변경하세요! ★★★
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxYnDgsFOcZRUbBpzHcPxgPeuN_PCUq8Su1mP9R0VLtW3kjxmJeJDH9XiAFkIDdHhlD/exec"; 
+        // ★★★ 본인의 배포 URL로 변경하세요! ★★★
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyCB31FpBE2zQCZe7YpYAt4qjfBRimbcC1w2XgHk-3uhGItRcXuAGXdcKxI0o_tPtlw/exec"; 
 
         let today = new Date();
         let yyyy = today.getFullYear();
@@ -395,6 +417,9 @@
         let min = String(today.getMinutes()).padStart(2, '0');
         let dateString = `${yy}.${mmString}.${dd} ${hh}:${min}`;
         
+        let activeBtn = updateMode === 'weight' ? submitWeightBtn : submitAllBtn;
+        let inactiveBtn = updateMode === 'weight' ? submitAllBtn : submitWeightBtn;
+
         for (let i = 0; i < totalFiles; i++) {
             const card = cards[i];
             let id = card.getAttribute('data-id');
@@ -416,8 +441,10 @@
                 else if (item.type === 'cbeam') cbeams.push({ spec: item.spec, weight: item.weight });
             });
 
+            // ★ payload에 updateMode ('weight' 또는 'all') 포함 ★
             const dataPayload = {
                 action: "upload_data",
+                updateMode: updateMode, 
                 isRevision: isRevisionCheck, 
                 date: dateString, year: yyyy, month: mmNumber, project: proj,
                 pipes: pipes, shorts: shorts, cbeams: cbeams,
@@ -436,21 +463,28 @@
             };
 
             try {
-                submitBtn.style.backgroundColor = "#f59e0b"; 
-                submitBtn.innerText = `[${i + 1}/${totalFiles}] ⚡ 데이터 시트 기록 중... (1초 대기)`;
+                // UI 업데이트
+                inactiveBtn.style.opacity = "0.3"; // 누르지 않은 버튼은 흐리게
+                activeBtn.innerHTML = `[${i + 1}/${totalFiles}] ⚡ 시트 기록 중...`;
+                
                 await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(dataPayload) });
 
-                submitBtn.style.backgroundColor = "#0ea5e9"; 
-                submitBtn.innerText = `✅ 시트 기록 완료! [${i + 1}/${totalFiles}] 원본 파일 백업 중... (창을 닫지 마세요)`;
+                activeBtn.innerHTML = `✅ 완료! [${i + 1}/${totalFiles}] 원본 파일 백업 중...`;
                 await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(filePayload) });
             } catch (err) { console.error("전송 오류:", err); }
         }
 
-        submitBtn.style.backgroundColor = "var(--primary-color)";
-        submitBtn.innerText = "구글 시트로 일괄 업데이트";
-        alert(`🎉 모든 데이터 기록 및 파일 백업이 완벽하게 끝났습니다!`);
+        // 버튼 복구
+        submitWeightBtn.disabled = false; 
+        submitAllBtn.disabled = false; 
+        resetBtn.disabled = false;
+        inactiveBtn.style.opacity = "1";
         
-        submitBtn.disabled = false; resetBtn.disabled = false;
+        submitAllBtn.innerHTML = '전체 업데이트<br><span style="font-size: 0.75em; font-weight: normal;">(메인 + SAP)</span>';
+        submitWeightBtn.innerHTML = '⭐ 중량만 업데이트<br><span style="font-size: 0.8em; font-weight: normal;">(메인 시트만)</span>';
+
+        alert(`🎉 ${updateMode === 'weight' ? '메인 시트' : '전체(메인+SAP) 시트'} 데이터 기록 및 백업이 완료되었습니다!`);
+        
         document.getElementById('resultArea').style.display = "none";
         document.getElementById('resultList').innerHTML = ""; 
         document.getElementById('excelFile').value = ''; 
