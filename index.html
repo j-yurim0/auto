@@ -37,24 +37,16 @@
         .spec-type-pipe { border-left: 4px solid #3b82f6; } 
         .spec-type-short { border-left: 4px solid #f59e0b; } 
         .spec-type-cbeam { border-left: 4px solid #10b981; } 
-        .spec-type-non_perf { border-left: 4px solid #a855f7; } 
         
-        /* ★ 버튼 디자인 수정 ★ */
         .action-buttons { display: flex; gap: 10px; margin-top: 20px; align-items: stretch; }
         button { border: none; border-radius: 6px; cursor: pointer; padding: 15px 10px; font-size: 1.05em; font-weight: bold; transition: all 0.2s; line-height: 1.4; }
         button:disabled { cursor: not-allowed; opacity: 0.7; }
-        
         button.reset-btn { background-color: #9ca3af; color: white; flex: 0.8; }
         button.reset-btn:hover { background-color: #6b7280; }
-        
-        /* 일괄 업데이트 버튼 (파란색 계열) */
         button.submit-all-btn { background-color: #3b82f6; color: white; flex: 1.3; }
         button.submit-all-btn:hover:not(:disabled) { background-color: #2563eb; }
-        
-        /* 중량만 업데이트 버튼 (황금/주황색 계열로 강조, 그림자 및 스케일 효과) */
         button.submit-weight-btn { background-color: #f59e0b; color: white; flex: 1.6; border: 2px solid #d97706; box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3); font-size: 1.1em;}
         button.submit-weight-btn:hover:not(:disabled) { background-color: #d97706; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(245, 158, 11, 0.4); }
-
         .info-text { font-size: 0.9em; color: #6b7280; text-align: center; margin-top: 15px; }
     </style>
 </head>
@@ -104,15 +96,10 @@
         
         <div class="action-buttons">
             <button class="reset-btn" onclick="clearList()" id="resetBtn">초기화</button>
-            <button class="submit-all-btn" onclick="sendToGoogleSheet('all')" id="submitAllBtn">
-                전체 업데이트<br><span style="font-size: 0.75em; font-weight: normal;">(메인 + SAP)</span>
-            </button>
-            <button class="submit-weight-btn" onclick="sendToGoogleSheet('weight')" id="submitWeightBtn">
-                ⭐ 중량만 업데이트<br><span style="font-size: 0.8em; font-weight: normal;">(메인 시트만)</span>
-            </button>
+            <button class="submit-all-btn" onclick="sendToGoogleSheet('all')" id="submitAllBtn">전체 업데이트<br><span style="font-size: 0.75em; font-weight: normal;">(메인 + SAP)</span></button>
+            <button class="submit-weight-btn" onclick="sendToGoogleSheet('weight')" id="submitWeightBtn">⭐ 중량만 업데이트<br><span style="font-size: 0.8em; font-weight: normal;">(메인 시트만)</span></button>
         </div>
-        
-        <p class="info-text">※ 투트랙(Two-Track) 백그라운드 업로드 자동 적용됨</p>
+        <p class="info-text">※ 공급가액(N) / 총중량(K) 기반 단가 자동 계산 적용</p>
     </div>
 </div>
 
@@ -169,11 +156,7 @@
 
     function processFiles(files) {
         if (files.length === 0) return;
-        
         let formType = document.querySelector('input[name="formType"]:checked').value;
-        let typeStr = formType === 'sales' ? '영업 기반' : '설계 기반';
-        let badgeClass = formType === 'sales' ? 'sales' : 'design';
-        
         let resultList = document.getElementById('resultList');
         document.getElementById('resultArea').style.display = "block";
 
@@ -195,32 +178,22 @@
                         weights.forEach(w => {
                             specTagsHtml += `<div class="spec-tag spec-type-${w.type}">${w.name} <strong>${w.weight.toLocaleString('ko-KR', {maximumFractionDigits: 3})}</strong> kg</div>`;
                         });
-                    } else {
-                        specTagsHtml = `<div style="color:#ef4444; font-size:0.9em; width:100%;">추출된 규격별 중량 데이터가 없습니다.</div>`;
                     }
-
-                    let accBadgeHtml = "";
-                    if (accessories.hasBracket) accBadgeHtml += `<span class="badge acc">브라켓 O</span>`;
-                    if (accessories.hasBolt) accBadgeHtml += `<span class="badge acc">볼트 O</span>`;
 
                     let cardHtml = `
                         <div class="file-result-card" id="card_${currentId}" data-id="${currentId}">
                             <button class="delete-btn" onclick="document.getElementById('card_${currentId}').remove()" title="이 항목 삭제">✕</button>
-                            <div class="file-name-title">📁 ${escapeHtml(f.name)} <span class="badge ${badgeClass}">${typeStr}</span>${accBadgeHtml}</div>
-                            
+                            <div class="file-name-title">📁 ${escapeHtml(f.name)}</div>
                             <div class="info-group">
                                 <input type="text" id="proj_${currentId}" class="input-field" value="${escapeHtml(projectName)}" placeholder="프로젝트명(현장명)">
                                 <label style="display: flex; align-items: center; gap: 8px; margin-top: 5px; cursor: pointer; color: #d97706; font-weight: bold; background: #fffbeb; padding: 10px; border-radius: 6px; border: 1px solid #fde68a;">
                                     <input type="checkbox" id="rev_${currentId}" style="width: 18px; height: 18px;">
-                                    🔄 이 견적서는 수정본입니다 (기존 내역 '수정' 체크 및 '(수정)' 텍스트 추가)
+                                    🔄 이 견적서는 수정본입니다
                                 </label>
                             </div>
-
                             <div class="spec-list-wrapper">
-                                <div style="font-weight:bold; font-size: 0.9em; color: #4b5563;">⚖️ 규격별 산출 중량</div>
                                 <div class="spec-list">${specTagsHtml}</div>
                             </div>
-                            
                             <input type="hidden" id="specData_${currentId}" value='${JSON.stringify(weights)}'>
                             <input type="hidden" id="accData_${currentId}" value='${JSON.stringify(accessories)}'>
                             <input type="hidden" id="fileData64_${currentId}" value="">
@@ -228,22 +201,12 @@
                         </div>
                     `;
                     resultList.insertAdjacentHTML('beforeend', cardHtml);
-
                     let base64Reader = new FileReader();
                     base64Reader.onload = function(b64Event) {
                         document.getElementById(`fileData64_${currentId}`).value = b64Event.target.result.split(',')[1];
                     };
                     base64Reader.readAsDataURL(f);
-
-                } catch (error) {
-                    resultList.insertAdjacentHTML('beforeend', `
-                        <div class="file-result-card" style="background-color: #fef2f2; border-color: #fecaca;">
-                            <button class="delete-btn" onclick="this.parentElement.remove()">✕</button>
-                            <div class="file-name-title">📁 ${escapeHtml(f.name)}</div>
-                            <div style="color: #dc2626; font-weight: bold;">❌ 엑셀 분석 실패 (에러 발생)</div>
-                        </div>
-                    `);
-                }
+                } catch (error) { console.error(error); }
             };
             reader.readAsArrayBuffer(f);
         });
@@ -253,242 +216,137 @@
     function extractProjectName(workbook, formType) {
         let company = "업체명미상", site = "현장명미상";
         try {
+            let sheet = workbook.Sheets[workbook.SheetNames[0]];
+            let data = XLSX.utils.sheet_to_json(sheet, {header: 1});
             if (formType === 'sales') {
-                let sheet = workbook.Sheets[workbook.SheetNames[0]];
-                let data = XLSX.utils.sheet_to_json(sheet, {header: 1});
                 for (let i = 0; i < Math.min(20, data.length); i++) {
-                    let row = data[i];
-                    if (!row) continue;
+                    let row = data[i]; if (!row) continue;
                     for (let j = 0; j < row.length; j++) {
-                        let cellVal = String(row[j] || "");
-                        if (cellVal.includes("견") && cellVal.includes("적")) {
-                            let match = cellVal.match(/\(([^)]+)\)/);
-                            if (match) site = match[1].trim();
-                            else if (cellVal.includes("-")) {
-                                let parts = cellVal.split("-");
-                                if (parts.length > 1) site = parts[parts.length - 1].trim();
-                            }
+                        let val = String(row[j] || "");
+                        if (val.includes("견") && val.includes("적")) {
+                            let m = val.match(/\(([^)]+)\)/);
+                            if (m) site = m[1].trim();
                         }
                     }
                 }
                 if (data[9] && data[9][2]) company = String(data[9][2]).replace(/주식회사/g, '').trim();
-            } else if (formType === 'design') {
-                let estimateSheet = workbook.Sheets["견적서"] || workbook.Sheets[workbook.SheetNames[0]];
-                let estData = XLSX.utils.sheet_to_json(estimateSheet, {header: 1});
-                if (estData[10] && estData[10][2]) company = String(estData[10][2]).replace(/주식회사/g, '').trim();
-                if (estData[0] && estData[0][25]) site = String(estData[0][25]).trim();
+            } else {
+                if (data[10] && data[10][2]) company = String(data[10][2]).replace(/주식회사/g, '').trim();
+                if (data[0] && data[0][25]) site = String(data[0][25]).trim();
             }
         } catch(e) {}
         return `${company}(${site})`;
     }
 
-    function extractAccessories(workbook, formType) {
-        let hasBracket = false;
-        let hasBolt = false;
-        try {
-            let sheetName = workbook.SheetNames[0]; 
-            if (formType === 'design') {
-                let calcSheet = workbook.SheetNames.find(name => name.includes("수량산출서") || name.includes("산출서"));
-                if (calcSheet) sheetName = calcSheet;
-            }
-            let worksheet = workbook.Sheets[sheetName];
-            if (!worksheet) return { hasBracket, hasBolt };
-            let data = XLSX.utils.sheet_to_json(worksheet, {header: 1});
-            let currentAcc = ""; 
+    // ★ 단가 계산을 위해 공급가액(N열, index 13)을 추가 추출하도록 수정 ★
+    function extractWeightsBySpec(workbook, formType) {
+        let sheetName = workbook.SheetNames[0]; 
+        let worksheet = workbook.Sheets[sheetName];
+        let json_data = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+        const pipeSpecs = [[100,100,3.2],[100,100,3.0],[100,100,2.3],[100,100,2.1],[100,50,2.1],[75,75,2.1],[50,50,2.1]];
+        const cSpecs = [[125,50,3.2],[125,50,3.0],[125,50,2.1],[100,50,3.2],[100,50,3.0],[100,50,2.3],[100,50,2.1],[75,45,2.3],[75,45,2.1]];
+        let resultMap = {}; 
+        
+        for (let i = 0; i < json_data.length; i++) {
+            let row = json_data[i];
+            if (!row || row.length === 0 || String(row[1] || "").includes("소계")) continue;
             
-            for (let i = 0; i < data.length; i++) {
-                let row = data[i];
-                if (!row || row.length === 0) continue;
-                let rowStr = row.join("").replace(/\s/g, ''); 
-                
-                if (rowStr.includes("부자재") || rowStr.includes("브라켓")) currentAcc = 'bracket';
-                if (rowStr.toUpperCase().includes("BOLTSET") || rowStr.includes("볼트")) currentAcc = 'bolt';
+            let weight = getNum(row[10]); // K열
+            let priceVal = getNum(row[13]); // N열 (공급가액)
+            if (weight <= 0) continue;
+            
+            let p_d1, p_d2, p_t, p_len, c_d1, c_d2, c_t, isNonPerf = false; 
+            if (formType === 'sales') {
+                p_d1 = getNum(row[2]); p_d2 = getNum(row[3]); p_t = getNum(row[4]); p_len = getNum(row[5]);
+                c_d1 = getNum(row[2]); c_d2 = getNum(row[3]); c_t = getNum(row[5]);
+                if (String(row[14] || "").includes("무타공")) isNonPerf = true;
+            } else {
+                p_d1 = getNum(row[4]); p_d2 = getNum(row[5]); p_t = getNum(row[6]); p_len = getNum(row[7]);
+                c_d1 = getNum(row[4]); c_d2 = getNum(row[5]); c_t = getNum(row[7]);
+                if (String(row[2] || "").includes("무타공")) isNonPerf = true;
+            }
 
-                if (formType === 'design' && String(row[2] || "").includes("소계")) {
-                    if (getNum(row[9]) > 0) {
-                        if (currentAcc === 'bracket') hasBracket = true;
-                        if (currentAcc === 'bolt') hasBolt = true;
-                    }
-                    currentAcc = ""; 
-                } else if (formType === 'sales' && String(row[1] || "").includes("소계")) {
-                    if (getNum(row[7]) > 0) {
-                        if (currentAcc === 'bracket') hasBracket = true;
-                        if (currentAcc === 'bolt') hasBolt = true;
-                    }
-                    currentAcc = ""; 
+            let matchedPipe = pipeSpecs.find(s => s[0] === p_d1 && s[1] === p_d2 && s[2] === p_t);
+            if (matchedPipe) {
+                let type = p_len >= 2 ? 'pipe' : 'short';
+                let specStr = (isNonPerf ? "[무타공] " : "") + (type === 'pipe' ? "각관 " : "단척 ") + `${p_d1}x${p_d2}x${p_t}`;
+                let key = `pipe_${specStr}`;
+                if(!resultMap[key]) resultMap[key] = { type: type, name: specStr, spec: specStr, weight: 0, totalPrice: 0 };
+                resultMap[key].weight += weight;
+                resultMap[key].totalPrice += priceVal;
+                continue; 
+            }
+            let matchedC = cSpecs.find(s => s[0] === c_d1 && s[1] === c_d2 && s[2] === c_t);
+            if (matchedC) {
+                let specStr = (isNonPerf ? "[무타공] " : "") + `C형강 ${c_d1}x${c_d2}x${c_t}`;
+                let key = `cbeam_${specStr}`;
+                if(!resultMap[key]) resultMap[key] = { type: 'cbeam', name: specStr, spec: specStr, weight: 0, totalPrice: 0 };
+                resultMap[key].weight += weight;
+                resultMap[key].totalPrice += priceVal;
+            }
+        }
+        return Object.values(resultMap);
+    }
+
+    function extractAccessories(workbook, formType) {
+        let hasBracket = false, hasBolt = false;
+        try {
+            let worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            let data = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+            let current = ""; 
+            for (let i = 0; i < data.length; i++) {
+                let r = data[i]; if (!r) continue;
+                let s = r.join("").replace(/\s/g, ''); 
+                if (s.includes("부자재") || s.includes("브라켓")) current = 'bracket';
+                if (s.toUpperCase().includes("BOLTSET") || s.includes("볼트")) current = 'bolt';
+                if (String(r[1] || "").includes("소계") && getNum(r[7]) > 0) {
+                    if (current === 'bracket') hasBracket = true;
+                    if (current === 'bolt') hasBolt = true;
+                    current = ""; 
                 }
             }
         } catch(e) {}
         return { hasBracket, hasBolt };
     }
 
-    function extractWeightsBySpec(workbook, formType) {
-        let sheetName = workbook.SheetNames[0]; 
-        if (formType === 'design') {
-            let calcSheet = workbook.SheetNames.find(name => name.includes("수량산출서") || name.includes("산출서"));
-            if (calcSheet) sheetName = calcSheet;
-        }
-        let worksheet = workbook.Sheets[sheetName];
-        if (!worksheet) return [];
-        let json_data = XLSX.utils.sheet_to_json(worksheet, {header: 1});
-        const pipeSpecs = [[100, 100, 3.2], [100, 100, 3.0], [100, 100, 2.3], [100, 100, 2.1], [100, 50, 2.1], [75, 75, 2.1], [50, 50, 2.1]];
-        const cSpecs = [[125, 50, 3.2], [125, 50, 3.0], [125, 50, 2.1], [100, 50, 3.2], [100, 50, 3.0], [100, 50, 2.3], [100, 50, 2.1], [75, 45, 2.3], [75, 45, 2.1]];
-        let resultMap = {}; 
-        
-        for (let i = 0; i < json_data.length; i++) {
-            let row = json_data[i];
-            if (!row || row.length === 0) continue;
-            let weight = getNum(row[10]); 
-            if (weight <= 0) continue;
-            
-            let qty = getNum(row[9]); 
-            let p_d1, p_d2, p_t, p_len, c_d1, c_d2, c_t, isNonPerf = false; 
-            
-            if (formType === 'sales') {
-                p_d1 = getNum(row[2]); p_d2 = getNum(row[3]); p_t = getNum(row[4]); p_len = getNum(row[5]);
-                c_d1 = getNum(row[2]); c_d2 = getNum(row[3]); c_t = getNum(row[5]);
-                if (String(row[14] || "").replace(/\s/g, '').includes("무타공")) isNonPerf = true;
-            } else {
-                p_d1 = getNum(row[4]); p_d2 = getNum(row[5]); p_t = getNum(row[6]); p_len = getNum(row[7]);
-                c_d1 = getNum(row[4]); c_d2 = getNum(row[5]); c_t = getNum(row[7]);
-                if (String(row[2] || "").replace(/\s/g, '').includes("무타공")) isNonPerf = true;
-            }
-
-            let matchedPipe = pipeSpecs.find(s => s[0] === p_d1 && s[1] === p_d2 && s[2] === p_t);
-            if (matchedPipe) {
-                let type = "", baseName = "", specStr = `${p_d1}x${p_d2}x${p_t}`;
-                if (p_len >= 2) { type = 'pipe'; baseName = `각관 ${specStr}`; } 
-                else if (p_len > 0 && p_len < 2) { type = 'short'; baseName = `단척 ${specStr}`; } 
-                else continue; 
-                
-                if (isNonPerf) { specStr = `무타공 ${specStr}`; baseName = `[무타공] ${baseName}`; }
-                let key = `${type}_${specStr}`;
-                if(!resultMap[key]) resultMap[key] = { type: type, name: baseName, spec: specStr, weight: 0, qty: 0 };
-                resultMap[key].weight += weight;
-                if (type === 'short') resultMap[key].qty += qty;
-                continue; 
-            }
-            
-            let matchedC = cSpecs.find(s => s[0] === c_d1 && s[1] === c_d2 && s[2] === c_t);
-            if (matchedC) {
-                let type = 'cbeam', specStr = `${c_d1}x${c_d2}x${c_t}`, baseName = `C형강 ${specStr}`;
-                if (isNonPerf) { specStr = `무타공 ${specStr}`; baseName = `[무타공] ${baseName}`; }
-                let key = `${type}_${specStr}`;
-                if(!resultMap[key]) resultMap[key] = { type: type, name: baseName, spec: specStr, weight: 0, qty: 0 };
-                resultMap[key].weight += weight;
-            }
-        }
-        let resultsArray = Object.values(resultMap).map(item => ({ ...item, weight: Math.round(item.weight * 1000) / 1000 }));
-        resultsArray.sort((a, b) => { const order = { 'pipe': 1, 'short': 2, 'cbeam': 3, 'non_perf': 4 }; return order[a.type] - order[b.type]; });
-        return resultsArray;
-    }
-
-    // ★ 어떤 버튼을 눌렀는지 파라미터(updateMode)를 전달받음 ★
     async function sendToGoogleSheet(updateMode) {
         const cards = document.querySelectorAll('.file-result-card[data-id]');
-        const totalFiles = cards.length;
-        if (totalFiles === 0) return alert("전송할 데이터가 없습니다.");
+        if (cards.length === 0) return alert("데이터가 없습니다.");
+        const mgr = document.getElementById('managerSelect').value;
+        if (!mgr) return alert("담당자를 선택하세요.");
 
-        const selectedManager = document.getElementById('managerSelect').value;
-        if (!selectedManager) {
-            alert("⚠️ 상단의 '담당자'를 먼저 선택해주세요.");
-            return document.getElementById('managerSelect').focus();
-        }
+        const btnW = document.getElementById('submitWeightBtn'), btnA = document.getElementById('submitAllBtn');
+        btnW.disabled = btnA.disabled = true;
 
-        const submitWeightBtn = document.getElementById('submitWeightBtn');
-        const submitAllBtn = document.getElementById('submitAllBtn');
-        const resetBtn = document.getElementById('resetBtn');
-        
-        // 버튼 비활성화
-        submitWeightBtn.disabled = true; 
-        submitAllBtn.disabled = true; 
-        resetBtn.disabled = true;
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzQYvI1AyiaSmK3TyMWWmS5Tj4giMU4NS5Ps6GGxdUS54bDyY4yAsY0yG-XfqTBG5Y/exec"; 
 
-        // ★★★ 본인의 배포 URL로 변경하세요! ★★★
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyCuv_WKT9emL-RPVXyrlAy0guXv466Yip26IKmzUNXyUDFUOYPXzO_G7uIuvGjTw6d/exec"; 
+        let now = new Date();
+        let dateStr = `${String(now.getFullYear()).slice(-2)}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 
-        let today = new Date();
-        let yyyy = today.getFullYear();
-        let mmNumber = today.getMonth() + 1; 
-        let mmString = String(mmNumber).padStart(2, '0');
-        let yy = String(yyyy).slice(-2);
-        let dd = String(today.getDate()).padStart(2, '0');
-        let hh = String(today.getHours()).padStart(2, '0');
-        let min = String(today.getMinutes()).padStart(2, '0');
-        let dateString = `${yy}.${mmString}.${dd} ${hh}:${min}`;
-        
-        let activeBtn = updateMode === 'weight' ? submitWeightBtn : submitAllBtn;
-        let inactiveBtn = updateMode === 'weight' ? submitAllBtn : submitWeightBtn;
+        for (let i = 0; i < cards.length; i++) {
+            let id = cards[i].getAttribute('data-id');
+            let proj = document.getElementById(`proj_${id}`).value.trim();
+            let isRev = document.getElementById(`rev_${id}`).checked;
+            let specs = JSON.parse(document.getElementById(`specData_${id}`).value);
+            let acc = JSON.parse(document.getElementById(`accData_${id}`).value);
+            let fData = document.getElementById(`fileData64_${id}`).value;
+            let fName = `[${dateStr.split(' ')[0]}]_${proj}_${document.getElementById(`fileName_${id}`).value}`;
 
-        for (let i = 0; i < totalFiles; i++) {
-            const card = cards[i];
-            let id = card.getAttribute('data-id');
-            let proj = document.getElementById(`proj_${id}`).value.trim() || "업체명 누락";
-            
-            let isRevisionCheck = document.getElementById(`rev_${id}`).checked;
-            
-            let specData = JSON.parse(document.getElementById(`specData_${id}`).value);
-            let accData = JSON.parse(document.getElementById(`accData_${id}`).value); 
-            let fileData = document.getElementById(`fileData64_${id}`).value;
-            let fileName = document.getElementById(`fileName_${id}`).value;
-            let finalFileName = `[${yy}.${mmString}.${dd} ${hh}시${min}분]_${proj}_${fileName}`;
-            let tempStatusText = `⏳ [${fileName}] 원본 백업 진행 중...`;
-
-            let pipes = [], shorts = [], cbeams = [];
-            specData.forEach(item => {
-                if (item.type === 'pipe') pipes.push({ spec: item.spec, weight: item.weight });
-                else if (item.type === 'short') shorts.push({ spec: item.spec, weight: item.weight, qty: item.qty });
-                else if (item.type === 'cbeam') cbeams.push({ spec: item.spec, weight: item.weight });
-            });
-
-            // ★ payload에 updateMode ('weight' 또는 'all') 포함 ★
-            const dataPayload = {
-                action: "upload_data",
-                updateMode: updateMode, 
-                isRevision: isRevisionCheck, 
-                date: dateString, year: yyyy, month: mmNumber, project: proj,
-                pipes: pipes, shorts: shorts, cbeams: cbeams,
-                hasBracket: accData.hasBracket ? "O" : "",
-                hasBolt: accData.hasBolt ? "O" : "",
-                manager: selectedManager,
-                tempText: tempStatusText
-            };
-
-            const filePayload = {
-                action: "upload_file",
-                year: yyyy, month: mmNumber,
-                fileData: fileData, 
-                fileName: finalFileName,
-                tempText: tempStatusText
+            const payload = {
+                action: "upload_data", updateMode: updateMode, isRevision: isRev,
+                date: dateStr, year: now.getFullYear(), month: now.getMonth() + 1, project: proj,
+                items: specs, hasBracket: acc.hasBracket ? "O" : "", hasBolt: acc.hasBolt ? "O" : "", manager: mgr,
+                tempText: `⏳ [${fName}] 백업 중...`
             };
 
             try {
-                // UI 업데이트
-                inactiveBtn.style.opacity = "0.3"; // 누르지 않은 버튼은 흐리게
-                activeBtn.innerHTML = `[${i + 1}/${totalFiles}] ⚡ 시트 기록 중...`;
-                
-                await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(dataPayload) });
-
-                activeBtn.innerHTML = `✅ 완료! [${i + 1}/${totalFiles}] 원본 파일 백업 중...`;
-                await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(filePayload) });
-            } catch (err) { console.error("전송 오류:", err); }
+                await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
+                await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: "upload_file", fileData: fData, fileName: fName, tempText: payload.tempText }) });
+            } catch (e) { console.error(e); }
         }
-
-        // 버튼 복구
-        submitWeightBtn.disabled = false; 
-        submitAllBtn.disabled = false; 
-        resetBtn.disabled = false;
-        inactiveBtn.style.opacity = "1";
-        
-        submitAllBtn.innerHTML = '전체 업데이트<br><span style="font-size: 0.75em; font-weight: normal;">(메인 + SAP)</span>';
-        submitWeightBtn.innerHTML = '⭐ 중량만 업데이트<br><span style="font-size: 0.8em; font-weight: normal;">(메인 시트만)</span>';
-
-        alert(`🎉 ${updateMode === 'weight' ? '메인 시트' : '전체(메인+SAP) 시트'} 데이터 기록 및 백업이 완료되었습니다!`);
-        
-        document.getElementById('resultArea').style.display = "none";
-        document.getElementById('resultList').innerHTML = ""; 
-        document.getElementById('excelFile').value = ''; 
-        globalFileCounter = 0;
+        alert("업데이트 완료!");
+        btnW.disabled = btnA.disabled = false;
+        clearList();
     }
 </script>
 
