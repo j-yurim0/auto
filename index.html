@@ -104,7 +104,7 @@
                 ⭐ 중량만 업데이트<br><span style="font-size: 0.8em; font-weight: normal;">(메인 시트만)</span>
             </button>
         </div>
-        <p class="info-text">※ 파일 용량이 큰 경우 변환에 다소 시간이 소요될 수 있습니다.</p>
+        <p class="info-text">※ 투트랙(Two-Track) 백그라운드 초고속 업로드 적용됨</p>
     </div>
 </div>
 
@@ -228,7 +228,6 @@
                             
                             <input type="hidden" id="specData_${currentId}" value='${JSON.stringify(weights)}'>
                             <input type="hidden" id="accData_${currentId}" value='${JSON.stringify(accessories)}'>
-                            
                             <input type="hidden" id="fileData64_${currentId}" value="">
                             <input type="hidden" id="fileName_${currentId}" value="${escapeHtml(f.name)}">
                             <input type="hidden" id="fileMime_${currentId}" value="${f.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}">
@@ -397,6 +396,7 @@
         return Object.values(resultMap).map(item => ({ ...item, weight: Math.round(item.weight * 1000) / 1000 }));
     }
 
+    // ★ 해결의 핵심: 예전의 Two-Track(병렬 처리 & 즉시 완료) 방식으로 완전히 복구! ★
     async function sendToGoogleSheet(updateMode) {
         const cards = document.querySelectorAll('.file-result-card[data-id]');
         const totalFiles = cards.length;
@@ -430,19 +430,14 @@
         let min = String(today.getMinutes()).padStart(2, '0');
         
         let dateString = `${yy}.${mmString}.${dd} ${hh}:${min}`;
-        
-        let activeBtn = updateMode === 'weight' ? submitWeightBtn : submitAllBtn;
-        let inactiveBtn = updateMode === 'weight' ? submitAllBtn : submitWeightBtn;
 
+        // 1. 모든 카드의 데이터를 비동기(병렬)로 한 번에 쏘아버립니다! (기다리지 않음)
         for (let i = 0; i < totalFiles; i++) {
             const card = cards[i];
             let id = card.getAttribute('data-id');
             let proj = document.getElementById(`proj_${id}`).value.trim() || "업체명 누락";
             let isRevisionCheck = document.getElementById(`rev_${id}`).checked;
             
-            activeBtn.innerHTML = `처리 중... (${i + 1}/${totalFiles})`;
-            inactiveBtn.style.opacity = "0.3";
-
             let specData = JSON.parse(document.getElementById(`specData_${id}`).value);
             let accData = JSON.parse(document.getElementById(`accData_${id}`).value); 
             let fileData = document.getElementById(`fileData64_${id}`).value;
@@ -452,7 +447,6 @@
             let finalFileName = `[${yy}.${mmString}.${dd} ${hh}시${min}분]_${proj}_${fileName}`;
             let tempStatusText = `⏳ [${fileName}] 원본 백업 진행 중...`;
 
-            // ★ 해결의 핵심: 스크립트(Code.gs)가 원하는 방식인 'items' 배열에 모든 자재를 담아 보냅니다 ★
             const dataPayload = {
                 action: "upload_data",
                 updateMode: updateMode,
@@ -470,34 +464,27 @@
                 year: yyyy, month: mmNumber,
                 fileData: fileData, 
                 fileName: finalFileName,
+                mimeType: fileMime,
                 tempText: tempStatusText
             };
 
             try {
-                await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST', mode: 'no-cors',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify(dataPayload)
-                });
-                
-                await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST', mode: 'no-cors',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify(filePayload)
-                });
+                // await 없이 바로 쏴서 백그라운드(Two-Track)로 넘겨버립니다.
+                fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(dataPayload) });
+                fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(filePayload) });
             } catch (err) {
                 console.error("전송 오류:", err);
             }
         }
 
-        alert(`✅ ${totalFiles}개의 데이터 기록이 성공적으로 완료되었습니다!\n(모드: ${updateMode === 'weight' ? '메인 시트만' : '메인+SAP'})`);
+        // 2. 쏘자마자 바로 성공 메시지를 띄우고 화면을 초기화해서 다음 작업을 받을 준비를 합니다.
+        alert(`✅ 백그라운드 전송 시작!\n데이터 기록과 원본 엑셀 백업이 진행 중입니다.\n창을 닫지 마시고 다음 작업을 바로 진행하셔도 됩니다.`);
         
         submitAllBtn.innerHTML = '전체 업데이트<br><span style="font-size: 0.75em; font-weight: normal;">(메인 + SAP)</span>';
         submitWeightBtn.innerHTML = '⭐ 중량만 업데이트<br><span style="font-size: 0.8em; font-weight: normal;">(메인 시트만)</span>';
         submitAllBtn.disabled = false;
         submitWeightBtn.disabled = false;
         resetBtn.disabled = false;
-        inactiveBtn.style.opacity = "1";
         
         document.getElementById('resultArea').style.display = "none";
         document.getElementById('resultList').innerHTML = ""; 
