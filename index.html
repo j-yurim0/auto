@@ -37,6 +37,7 @@
         .spec-type-pipe { border-left: 4px solid #3b82f6; } 
         .spec-type-short { border-left: 4px solid #f59e0b; } 
         .spec-type-cbeam { border-left: 4px solid #10b981; } 
+        
         .action-buttons { display: flex; gap: 10px; margin-top: 20px; align-items: stretch; }
         button { border: none; border-radius: 6px; cursor: pointer; padding: 15px 10px; font-size: 1.05em; font-weight: bold; transition: all 0.2s; line-height: 1.4; }
         button:disabled { cursor: not-allowed; opacity: 0.7; }
@@ -91,19 +92,13 @@
         <div style="font-weight: bold; margin-bottom: 15px; font-size: 1.1em; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">
             📋 추출된 현장별 규격 중량 데이터
         </div>
-        
         <div id="resultList"></div>
-        
         <div class="action-buttons">
             <button class="reset-btn" onclick="clearList()" id="resetBtn">목록 초기화</button>
-            <button class="submit-all-btn" onclick="sendToGoogleSheet('all')" id="submitAllBtn">
-                전체 업데이트<br><span style="font-size: 0.75em; font-weight: normal;">(메인 + SAP)</span>
-            </button>
-            <button class="submit-weight-btn" onclick="sendToGoogleSheet('weight')" id="submitWeightBtn">
-                ⭐ 중량만 업데이트<br><span style="font-size: 0.8em; font-weight: normal;">(메인 시트만)</span>
-            </button>
+            <button class="submit-all-btn" onclick="sendToGoogleSheet('all')" id="submitAllBtn">전체 업데이트<br><span style="font-size: 0.75em; font-weight: normal;">(메인 + SAP)</span></button>
+            <button class="submit-weight-btn" onclick="sendToGoogleSheet('weight')" id="submitWeightBtn">⭐ 중량만 업데이트<br><span style="font-size: 0.8em; font-weight: normal;">(메인 시트만)</span></button>
         </div>
-        <p class="info-text">※ 파일 용량이 큰 경우 변환에 다소 시간이 소요될 수 있습니다.</p>
+        <p class="info-text">※ 투트랙(Two-Track) 백그라운드 업로드 자동 적용됨</p>
     </div>
 </div>
 
@@ -201,35 +196,25 @@
                     let cardHtml = `
                         <div class="file-result-card" id="card_${currentId}" data-id="${currentId}">
                             <button class="delete-btn" onclick="document.getElementById('card_${currentId}').remove()" title="이 항목 삭제">✕</button>
-                            
-                            <div class="file-name-title">
-                                📁 ${escapeHtml(f.name)} 
-                                <span class="badge ${badgeClass}">${typeStr}</span>
-                                ${accBadgeHtml}
-                            </div>
+                            <div class="file-name-title">📁 ${escapeHtml(f.name)} <span class="badge ${badgeClass}">${typeStr}</span>${accBadgeHtml}</div>
                             
                             <div class="info-group">
                                 <input type="text" id="proj_${currentId}" class="input-field" value="${escapeHtml(projectName)}" placeholder="프로젝트명(현장명)">
                                 <label style="display: flex; align-items: center; gap: 8px; margin-top: 5px; cursor: pointer; color: #d97706; font-weight: bold; background: #fffbeb; padding: 10px; border-radius: 6px; border: 1px solid #fde68a;">
                                     <input type="checkbox" id="rev_${currentId}" style="width: 18px; height: 18px;">
-                                    🔄 이 견적서는 수정본입니다
+                                    🔄 이 견적서는 수정본입니다 (기존 내역 '수정' 체크 및 '(수정)' 텍스트 추가)
                                 </label>
                             </div>
 
                             <div class="spec-list-wrapper">
-                                <div style="font-weight:bold; font-size: 0.9em; color: #4b5563;">
-                                    ⚖️ 규격별 산출 중량
-                                </div>
-                                <div class="spec-list">
-                                    ${specTagsHtml}
-                                </div>
+                                <div style="font-weight:bold; font-size: 0.9em; color: #4b5563;">⚖️ 규격별 산출 중량</div>
+                                <div class="spec-list">${specTagsHtml}</div>
                             </div>
                             
                             <input type="hidden" id="specData_${currentId}" value='${JSON.stringify(weights)}'>
                             <input type="hidden" id="accData_${currentId}" value='${JSON.stringify(accessories)}'>
                             <input type="hidden" id="fileData64_${currentId}" value="">
                             <input type="hidden" id="fileName_${currentId}" value="${escapeHtml(f.name)}">
-                            <input type="hidden" id="fileMime_${currentId}" value="${f.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}">
                         </div>
                     `;
                     resultList.insertAdjacentHTML('beforeend', cardHtml);
@@ -241,14 +226,13 @@
                     base64Reader.readAsDataURL(f);
 
                 } catch (error) {
-                    let errorHtml = `
+                    resultList.insertAdjacentHTML('beforeend', `
                         <div class="file-result-card" style="background-color: #fef2f2; border-color: #fecaca;">
                             <button class="delete-btn" onclick="this.parentElement.remove()">✕</button>
                             <div class="file-name-title">📁 ${escapeHtml(f.name)}</div>
                             <div style="color: #dc2626; font-weight: bold;">❌ 엑셀 분석 실패 (에러 발생)</div>
                         </div>
-                    `;
-                    resultList.insertAdjacentHTML('beforeend', errorHtml);
+                    `);
                 }
             };
             reader.readAsArrayBuffer(f);
@@ -334,7 +318,6 @@
         return { hasBracket, hasBolt };
     }
 
-    // ★ C형강 추출 오류의 핵심이 해결된 함수 ★
     function extractWeightsBySpec(workbook, formType) {
         let sheetName = workbook.SheetNames[0]; 
         if (formType === 'design') {
@@ -343,68 +326,67 @@
         }
         let worksheet = workbook.Sheets[sheetName];
         if (!worksheet) return [];
-        
         let json_data = XLSX.utils.sheet_to_json(worksheet, {header: 1});
         const pipeSpecs = [[100, 100, 3.2], [100, 100, 3.0], [100, 100, 2.3], [100, 100, 2.1], [100, 50, 2.1], [75, 75, 2.1], [50, 50, 2.1]];
         const cSpecs = [[125, 50, 3.2], [125, 50, 3.0], [125, 50, 2.1], [100, 50, 3.2], [100, 50, 3.0], [100, 50, 2.3], [100, 50, 2.1], [75, 45, 2.3], [75, 45, 2.1]];
         let resultMap = {}; 
-        
+
         for (let i = 0; i < json_data.length; i++) {
             let row = json_data[i];
-            // "소계" 텍스트가 포함된 요약 행은 안전하게 건너뜁니다.
+            // "소계" 제외 처리
             if (!row || row.length < 5 || row.join("").includes("소계")) continue;
             
-            let weight = getNum(row[10]); // 공통 K열(중량)
+            let weight = getNum(row[10]); 
             if (weight <= 0) continue;
-            
-            let p_d1, p_d2, p_t, p_len;
-            let c_d1, c_d2, c_t;
-            let priceVal = 0, isNonPerf = false; 
-            
+
+            let qty = getNum(row[9]); 
+            let p_d1, p_d2, p_t, p_len, c_d1, c_d2, c_t, isNonPerf = false, priceVal = 0; 
+
             if (formType === 'sales') {
                 p_d1 = getNum(row[2]); p_d2 = getNum(row[3]); p_t = getNum(row[4]); p_len = getNum(row[5]);
-                // 영업 모드: C형강 두께는 F열(인덱스 5)
-                c_d1 = getNum(row[2]); c_d2 = getNum(row[3]); c_t = getNum(row[5]); 
+                c_d1 = getNum(row[2]); c_d2 = getNum(row[3]); c_t = getNum(row[5]);
                 priceVal = getNum(row[13]); 
                 if (String(row[14] || "").replace(/\s/g, '').includes("무타공")) isNonPerf = true;
             } else {
                 p_d1 = getNum(row[4]); p_d2 = getNum(row[5]); p_t = getNum(row[6]); p_len = getNum(row[7]);
-                // ★ 설계 모드: C형강 두께는 H열(인덱스 7) ★ -> 이 부분이 복구되었습니다!
-                c_d1 = getNum(row[4]); c_d2 = getNum(row[5]); c_t = getNum(row[7]); 
+                c_d1 = getNum(row[4]); c_d2 = getNum(row[5]); c_t = getNum(row[7]); // ★ 복구: 설계 C형강 H열(7) 두께 참조
                 if (String(row[2] || "").replace(/\s/g, '').includes("무타공")) isNonPerf = true;
             }
 
-            // 1. 각관 검사
             let matchedPipe = pipeSpecs.find(s => s[0] === p_d1 && s[1] === p_d2 && s[2] === p_t);
             if (matchedPipe) {
-                let type = p_len >= 2 ? 'pipe' : 'short';
-                let specStr = (isNonPerf ? "[무타공] " : "") + (type === 'pipe' ? "각관 " : "단척 ") + `${p_d1}x${p_d2}x${p_t}`;
-                let key = `pipe_${specStr}`;
-                
-                if(!resultMap[key]) resultMap[key] = { type: type, name: specStr, spec: specStr, weight: 0, totalPrice: 0 };
+                let type = "", baseName = "", specStr = `${p_d1}x${p_d2}x${p_t}`;
+                if (p_len >= 2) { type = 'pipe'; baseName = `각관 ${specStr}`; } 
+                else if (p_len > 0 && p_len < 2) { type = 'short'; baseName = `단척 ${specStr}`; } 
+                else continue; 
+
+                if (isNonPerf) { specStr = `무타공 ${specStr}`; baseName = `[무타공] ${baseName}`; }
+                let key = `${type}_${specStr}`;
+                if(!resultMap[key]) resultMap[key] = { type: type, name: baseName, spec: specStr, weight: 0, qty: 0, totalPrice: 0 };
                 resultMap[key].weight += weight;
                 resultMap[key].totalPrice += priceVal;
+                if (type === 'short') resultMap[key].qty += qty;
                 continue; 
             }
-            
-            // 2. C형강 검사
+
             let matchedC = cSpecs.find(s => s[0] === c_d1 && s[1] === c_d2 && s[2] === c_t);
             if (matchedC) {
-                let specStr = (isNonPerf ? "[무타공] " : "") + `C형강 ${c_d1}x${c_d2}x${c_t}`;
-                let key = `cbeam_${specStr}`;
-                
-                if(!resultMap[key]) resultMap[key] = { type: 'cbeam', name: specStr, spec: specStr, weight: 0, totalPrice: 0 };
+                let type = 'cbeam', specStr = `${c_d1}x${c_d2}x${c_t}`, baseName = `C형강 ${specStr}`;
+                if (isNonPerf) { specStr = `무타공 ${specStr}`; baseName = `[무타공] ${baseName}`; }
+                let key = `${type}_${specStr}`;
+                if(!resultMap[key]) resultMap[key] = { type: type, name: baseName, spec: specStr, weight: 0, qty: 0, totalPrice: 0 };
                 resultMap[key].weight += weight;
                 resultMap[key].totalPrice += priceVal;
             }
         }
-        return Object.values(resultMap).map(item => ({ ...item, weight: Math.round(item.weight * 1000) / 1000 }));
+        let resultsArray = Object.values(resultMap).map(item => ({ ...item, weight: Math.round(item.weight * 1000) / 1000 }));
+        resultsArray.sort((a, b) => { const order = { 'pipe': 1, 'short': 2, 'cbeam': 3, 'non_perf': 4 }; return order[a.type] - order[b.type]; });
+        return resultsArray;
     }
 
     async function sendToGoogleSheet(updateMode) {
         const cards = document.querySelectorAll('.file-result-card[data-id]');
         const totalFiles = cards.length;
-        
         if (totalFiles === 0) return alert("전송할 데이터가 없습니다.");
 
         const selectedManager = document.getElementById('managerSelect').value;
@@ -416,23 +398,19 @@
         const submitWeightBtn = document.getElementById('submitWeightBtn');
         const submitAllBtn = document.getElementById('submitAllBtn');
         const resetBtn = document.getElementById('resetBtn');
-        
-        submitWeightBtn.disabled = true;
-        submitAllBtn.disabled = true;
-        resetBtn.disabled = true;
+        submitWeightBtn.disabled = true; submitAllBtn.disabled = true; resetBtn.disabled = true;
 
-        // ★ 반드시 본인의 구글 웹 앱 URL로 교체하세요! ★
+        // ★★★ 주의: 본인의 최신 구글 웹 앱 배포 URL로 반드시 변경하세요! ★★★
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzvHcGfFakvIgt1_SZQ3hJpJV6Vu8F8VjWUUDrnQxLzDdjZAnY9OmVOaNH8fC8vurF2/exec"; 
 
         let today = new Date();
         let yyyy = today.getFullYear();
-        let yy = String(yyyy).slice(-2);
         let mmNumber = today.getMonth() + 1; 
         let mmString = String(mmNumber).padStart(2, '0');
+        let yy = String(yyyy).slice(-2);
         let dd = String(today.getDate()).padStart(2, '0');
         let hh = String(today.getHours()).padStart(2, '0');
         let min = String(today.getMinutes()).padStart(2, '0');
-        
         let dateString = `${yy}.${mmString}.${dd} ${hh}:${min}`;
         
         let activeBtn = updateMode === 'weight' ? submitWeightBtn : submitAllBtn;
@@ -442,59 +420,59 @@
             const card = cards[i];
             let id = card.getAttribute('data-id');
             let proj = document.getElementById(`proj_${id}`).value.trim() || "업체명 누락";
+
             let isRevisionCheck = document.getElementById(`rev_${id}`).checked;
-            
-            activeBtn.innerHTML = `처리 중... (${i + 1}/${totalFiles})`;
-            inactiveBtn.style.opacity = "0.3";
 
             let specData = JSON.parse(document.getElementById(`specData_${id}`).value);
             let accData = JSON.parse(document.getElementById(`accData_${id}`).value); 
             let fileData = document.getElementById(`fileData64_${id}`).value;
             let fileName = document.getElementById(`fileName_${id}`).value;
-            let fileMime = document.getElementById(`fileMime_${id}`).value;
-
             let finalFileName = `[${yy}.${mmString}.${dd} ${hh}시${min}분]_${proj}_${fileName}`;
+            let tempStatusText = `⏳ [${fileName}] 원본 백업 진행 중...`;
 
             let pipes = [], shorts = [], cbeams = [];
             specData.forEach(item => {
-                let specStr = item.spec; 
-                if (item.type === 'pipe') pipes.push({ spec: specStr, weight: item.weight });
-                else if (item.type === 'short') shorts.push({ spec: specStr, weight: item.weight, qty: item.qty });
-                else if (item.type === 'cbeam') cbeams.push({ spec: specStr, weight: item.weight });
+                if (item.type === 'pipe') pipes.push({ spec: item.spec, weight: item.weight, totalPrice: item.totalPrice || 0 });
+                else if (item.type === 'short') shorts.push({ spec: item.spec, weight: item.weight, qty: item.qty, totalPrice: item.totalPrice || 0 });
+                else if (item.type === 'cbeam') cbeams.push({ spec: item.spec, weight: item.weight, totalPrice: item.totalPrice || 0 });
             });
 
+            // ★ 복구: 기존의 Payload 구조(pipes, shorts, cbeams)로 되돌림 + updateMode 파라미터 추가
             const dataPayload = {
                 action: "upload_data",
                 updateMode: updateMode,
+                isRevision: isRevisionCheck, 
                 date: dateString, year: yyyy, month: mmNumber, project: proj,
-                isRevision: isRevisionCheck,
                 pipes: pipes, shorts: shorts, cbeams: cbeams,
                 hasBracket: accData.hasBracket ? "O" : "",
                 hasBolt: accData.hasBolt ? "O" : "",
                 manager: selectedManager,
-                fileData: fileData,  
+                tempText: tempStatusText
+            };
+
+            const filePayload = {
+                action: "upload_file",
+                year: yyyy, month: mmNumber,
+                fileData: fileData, 
                 fileName: finalFileName,
-                mimeType: fileMime
+                tempText: tempStatusText
             };
 
             try {
-                await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST', mode: 'no-cors',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify(dataPayload)
-                });
-            } catch (err) {
-                console.error("전송 오류:", err);
-            }
+                activeBtn.innerText = `[${i + 1}/${totalFiles}] ⚡ 데이터 시트 기록 중...`;
+                inactiveBtn.style.opacity = "0.3";
+                await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(dataPayload) });
+
+                activeBtn.innerText = `✅ 시트 기록 완료! [${i + 1}/${totalFiles}] 원본 파일 백업 중...`;
+                await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(filePayload) });
+            } catch (err) { console.error("전송 오류:", err); }
         }
 
-        alert(`✅ ${totalFiles}개의 데이터 기록이 성공적으로 완료되었습니다!\n(모드: ${updateMode === 'weight' ? '메인 시트만' : '메인+SAP'})`);
-        
+        alert(`🎉 데이터 기록 및 파일 백업이 끝났습니다!\n(모드: ${updateMode === 'weight' ? '메인 시트만' : '메인+SAP'})`);
+
         submitAllBtn.innerHTML = '전체 업데이트<br><span style="font-size: 0.75em; font-weight: normal;">(메인 + SAP)</span>';
         submitWeightBtn.innerHTML = '⭐ 중량만 업데이트<br><span style="font-size: 0.8em; font-weight: normal;">(메인 시트만)</span>';
-        submitAllBtn.disabled = false;
-        submitWeightBtn.disabled = false;
-        resetBtn.disabled = false;
+        submitWeightBtn.disabled = false; submitAllBtn.disabled = false; resetBtn.disabled = false;
         inactiveBtn.style.opacity = "1";
         
         document.getElementById('resultArea').style.display = "none";
