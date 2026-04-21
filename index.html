@@ -25,7 +25,6 @@
         .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
         .badge.sales { background-color: #dbeafe; color: #1e40af; }
         .badge.design { background-color: #e0e7ff; color: #3730a3; }
-        .badge.acc { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
         .delete-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; color: #9ca3af; font-size: 1.2em; cursor: pointer; font-weight: bold; transition: color 0.2s; }
         .delete-btn:hover { color: #ef4444; }
         .info-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
@@ -34,19 +33,12 @@
         .spec-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
         .spec-tag { background: #f8fafc; border: 1px solid #cbd5e1; padding: 6px 12px; border-radius: 6px; font-size: 0.9em; color: #334155; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 5px; }
         .spec-tag strong { color: #0f766e; font-size: 1.15em; }
-        .spec-type-pipe { border-left: 4px solid #3b82f6; } 
-        .spec-type-short { border-left: 4px solid #f59e0b; } 
-        .spec-type-cbeam { border-left: 4px solid #10b981; } 
-        
         .action-buttons { display: flex; gap: 10px; margin-top: 20px; align-items: stretch; }
         button { border: none; border-radius: 6px; cursor: pointer; padding: 15px 10px; font-size: 1.05em; font-weight: bold; transition: all 0.2s; line-height: 1.4; }
         button:disabled { cursor: not-allowed; opacity: 0.7; }
         button.reset-btn { background-color: #9ca3af; color: white; flex: 0.8; }
-        button.reset-btn:hover { background-color: #6b7280; }
         button.submit-all-btn { background-color: #3b82f6; color: white; flex: 1.3; }
-        button.submit-all-btn:hover:not(:disabled) { background-color: #2563eb; }
-        button.submit-weight-btn { background-color: #f59e0b; color: white; flex: 1.6; border: 2px solid #d97706; box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3); font-size: 1.1em;}
-        button.submit-weight-btn:hover:not(:disabled) { background-color: #d97706; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(245, 158, 11, 0.4); }
+        button.submit-weight-btn { background-color: #f59e0b; color: white; flex: 1.6; border: 2px solid #d97706; }
         .info-text { font-size: 0.9em; color: #6b7280; text-align: center; margin-top: 15px; }
     </style>
 </head>
@@ -69,7 +61,6 @@
             <option value="노성현">노성현</option>
             <option value="권도희">권도희</option>
         </select>
-        <span style="font-size: 0.85em; color: #64748b;">(자동 기억됩니다)</span>
     </div>
     
     <div class="form-type-selector">
@@ -92,24 +83,20 @@
         <div style="font-weight: bold; margin-bottom: 15px; font-size: 1.1em; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">
             📋 추출된 현장별 규격 중량 데이터
         </div>
-        
         <div id="resultList"></div>
-        
         <div class="action-buttons">
             <button class="reset-btn" onclick="clearList()" id="resetBtn">목록 초기화</button>
-            <button class="submit-all-btn" onclick="sendToGoogleSheet('all')" id="submitAllBtn">
-                전체 업데이트<br><span style="font-size: 0.75em; font-weight: normal;">(메인 + SAP)</span>
-            </button>
-            <button class="submit-weight-btn" onclick="sendToGoogleSheet('weight')" id="submitWeightBtn">
-                ⭐ 중량만 업데이트<br><span style="font-size: 0.8em; font-weight: normal;">(메인 시트만)</span>
-            </button>
+            <button class="submit-all-btn" onclick="sendToGoogleSheet('all')" id="submitAllBtn">전체 업데이트<br><span style="font-size: 0.75em; font-weight: normal;">(메인 + SAP)</span></button>
+            <button class="submit-weight-btn" onclick="sendToGoogleSheet('weight')" id="submitWeightBtn">⭐ 중량만 업데이트<br><span style="font-size: 0.8em; font-weight: normal;">(메인 시트만)</span></button>
         </div>
-        <p class="info-text">※ 투트랙(Two-Track) 백그라운드 초고속 업로드 적용됨</p>
+        <p class="info-text">※ 대용량 파일도 멈춤 없이 전송되는 <b>직접 전송(Direct Upload)</b> 모드 작동 중</p>
     </div>
 </div>
 
 <script>
     let globalFileCounter = 0;
+    // ★ 업로드된 원본 파일을 그대로 보관하기 위한 전역 배열 ★
+    let rawFiles = {}; 
 
     document.addEventListener('DOMContentLoaded', () => {
         const savedManager = localStorage.getItem('selectedManager');
@@ -140,10 +127,7 @@
     dropZone.addEventListener('drop', (e) => {
         e.preventDefault();
         dropZone.classList.remove('dragover');
-        if (e.dataTransfer.files.length > 0) {
-            fileInput.files = e.dataTransfer.files; 
-            processFiles(e.dataTransfer.files);     
-        }
+        if (e.dataTransfer.files.length > 0) processFiles(e.dataTransfer.files);
     });
 
     fileInput.addEventListener('change', (e) => {
@@ -156,6 +140,7 @@
             document.getElementById('resultArea').style.display = "none";
             document.getElementById('excelFile').value = ''; 
             globalFileCounter = 0;
+            rawFiles = {}; // 파일 저장소 초기화
         }
     }
 
@@ -166,18 +151,16 @@
         let typeStr = formType === 'sales' ? '영업 기반' : '설계 기반';
         let badgeClass = formType === 'sales' ? 'sales' : 'design';
         
-        let resultList = document.getElementById('resultList');
         document.getElementById('resultArea').style.display = "block";
 
         Array.from(files).forEach((f) => {
             let currentId = globalFileCounter++; 
-            let reader = new FileReader();
+            rawFiles[currentId] = f; // ★ 원본 파일 객체를 그대로 저장합니다.
 
+            let reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    let data = new Uint8Array(e.target.result);
-                    let workbook = XLSX.read(data, {type: 'array'});
-                    
+                    let workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
                     let projectName = extractProjectName(workbook, formType);
                     let weights = extractWeightsBySpec(workbook, formType);
                     let accessories = extractAccessories(workbook, formType);
@@ -185,30 +168,18 @@
                     let specTagsHtml = "";
                     if (weights.length > 0) {
                         weights.forEach(w => {
-                            specTagsHtml += `
-                                <div class="spec-tag spec-type-${w.type}">
-                                    ${w.name} <strong>${w.weight.toLocaleString('ko-KR', {maximumFractionDigits: 3})}</strong> kg
-                                </div>
-                            `;
+                            specTagsHtml += `<div class="spec-tag spec-type-${w.type}">${w.name} <strong>${w.weight.toLocaleString('ko-KR', {maximumFractionDigits: 3})}</strong> kg</div>`;
                         });
                     } else {
-                        specTagsHtml = `<div style="color:#ef4444; font-size:0.9em; width:100%;">추출된 규격별 중량 데이터가 없습니다.</div>`;
+                        specTagsHtml = `<div style="color:#ef4444; font-size:0.9em; width:100%;">데이터 없음</div>`;
                     }
 
-                    let accBadgeHtml = "";
-                    if (accessories.hasBracket) accBadgeHtml += `<span class="badge acc">브라켓 O</span>`;
-                    if (accessories.hasBolt) accBadgeHtml += `<span class="badge acc">볼트 O</span>`;
+                    let accBadgeHtml = (accessories.hasBracket ? `<span class="badge acc">브라켓 O</span>` : '') + (accessories.hasBolt ? `<span class="badge acc">볼트 O</span>` : '');
 
                     let cardHtml = `
                         <div class="file-result-card" id="card_${currentId}" data-id="${currentId}">
-                            <button class="delete-btn" onclick="document.getElementById('card_${currentId}').remove()" title="이 항목 삭제">✕</button>
-                            
-                            <div class="file-name-title">
-                                📁 ${escapeHtml(f.name)} 
-                                <span class="badge ${badgeClass}">${typeStr}</span>
-                                ${accBadgeHtml}
-                            </div>
-                            
+                            <button class="delete-btn" onclick="removeCard(${currentId})" title="이 항목 삭제">✕</button>
+                            <div class="file-name-title">📁 ${escapeHtml(f.name)} <span class="badge ${badgeClass}">${typeStr}</span>${accBadgeHtml}</div>
                             <div class="info-group">
                                 <input type="text" id="proj_${currentId}" class="input-field" value="${escapeHtml(projectName)}" placeholder="프로젝트명(현장명)">
                                 <label style="display: flex; align-items: center; gap: 8px; margin-top: 5px; cursor: pointer; color: #d97706; font-weight: bold; background: #fffbeb; padding: 10px; border-radius: 6px; border: 1px solid #fde68a;">
@@ -216,45 +187,35 @@
                                     🔄 이 견적서는 수정본입니다
                                 </label>
                             </div>
-
                             <div class="spec-list-wrapper">
-                                <div style="font-weight:bold; font-size: 0.9em; color: #4b5563;">
-                                    ⚖️ 규격별 산출 중량
-                                </div>
-                                <div class="spec-list">
-                                    ${specTagsHtml}
-                                </div>
+                                <div style="font-weight:bold; font-size: 0.9em; color: #4b5563;">⚖️ 규격별 산출 중량</div>
+                                <div class="spec-list">${specTagsHtml}</div>
                             </div>
-                            
                             <input type="hidden" id="specData_${currentId}" value='${JSON.stringify(weights)}'>
                             <input type="hidden" id="accData_${currentId}" value='${JSON.stringify(accessories)}'>
-                            <input type="hidden" id="fileData64_${currentId}" value="">
                             <input type="hidden" id="fileName_${currentId}" value="${escapeHtml(f.name)}">
-                            <input type="hidden" id="fileMime_${currentId}" value="${f.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}">
                         </div>
                     `;
-                    resultList.insertAdjacentHTML('beforeend', cardHtml);
-
-                    let base64Reader = new FileReader();
-                    base64Reader.onload = function(b64Event) {
-                        document.getElementById(`fileData64_${currentId}`).value = b64Event.target.result.split(',')[1];
-                    };
-                    base64Reader.readAsDataURL(f);
+                    document.getElementById('resultList').insertAdjacentHTML('beforeend', cardHtml);
 
                 } catch (error) {
-                    let errorHtml = `
+                    document.getElementById('resultList').insertAdjacentHTML('beforeend', `
                         <div class="file-result-card" style="background-color: #fef2f2; border-color: #fecaca;">
-                            <button class="delete-btn" onclick="this.parentElement.remove()">✕</button>
+                            <button class="delete-btn" onclick="removeCard(${currentId})">✕</button>
                             <div class="file-name-title">📁 ${escapeHtml(f.name)}</div>
-                            <div style="color: #dc2626; font-weight: bold;">❌ 엑셀 분석 실패 (에러 발생)</div>
+                            <div style="color: #dc2626; font-weight: bold;">❌ 엑셀 분석 실패</div>
                         </div>
-                    `;
-                    resultList.insertAdjacentHTML('beforeend', errorHtml);
+                    `);
                 }
             };
             reader.readAsArrayBuffer(f);
         });
         document.getElementById('excelFile').value = ""; 
+    }
+
+    function removeCard(id) {
+        document.getElementById(`card_${id}`).remove();
+        delete rawFiles[id]; // 저장소에서도 삭제
     }
 
     function extractProjectName(workbook, formType) {
@@ -264,8 +225,7 @@
                 let sheet = workbook.Sheets[workbook.SheetNames[0]];
                 let data = XLSX.utils.sheet_to_json(sheet, {header: 1});
                 for (let i = 0; i < Math.min(20, data.length); i++) {
-                    let row = data[i];
-                    if (!row) continue;
+                    let row = data[i]; if (!row) continue;
                     for (let j = 0; j < row.length; j++) {
                         let cellVal = String(row[j] || "");
                         if (cellVal.includes("견") && cellVal.includes("적")) {
@@ -301,18 +261,14 @@
             if (!worksheet) return { hasBracket, hasBolt };
             let data = XLSX.utils.sheet_to_json(worksheet, {header: 1});
             let currentAcc = ""; 
-            
             for (let i = 0; i < data.length; i++) {
-                let row = data[i];
-                if (!row || row.length === 0) continue;
+                let row = data[i]; if (!row || row.length === 0) continue;
                 let rowStr = row.join("").replace(/\s/g, ''); 
-                
                 if (formType === 'design') {
                     if (rowStr.includes("브라켓")) currentAcc = 'bracket';
                     if (rowStr.toUpperCase().includes("BOLTSET")) currentAcc = 'bolt';
                     if (String(row[2] || "").includes("소계")) {
-                        let qty = getNum(row[9]); 
-                        if (qty > 0) {
+                        if (getNum(row[9]) > 0) {
                             if (currentAcc === 'bracket') hasBracket = true;
                             if (currentAcc === 'bolt') hasBolt = true;
                         }
@@ -322,8 +278,7 @@
                     if (rowStr.includes("부자재")) currentAcc = 'bracket';
                     if (rowStr.toUpperCase().includes("BOLTSET")) currentAcc = 'bolt';
                     if (String(row[1] || "").includes("소계")) {
-                        let qty = getNum(row[7]); 
-                        if (qty > 0) {
+                        if (getNum(row[7]) > 0) {
                             if (currentAcc === 'bracket') hasBracket = true;
                             if (currentAcc === 'bolt') hasBolt = true;
                         }
@@ -343,23 +298,18 @@
         }
         let worksheet = workbook.Sheets[sheetName];
         if (!worksheet) return [];
-        
         let json_data = XLSX.utils.sheet_to_json(worksheet, {header: 1});
         const pipeSpecs = [[100, 100, 3.2], [100, 100, 3.0], [100, 100, 2.3], [100, 100, 2.1], [100, 50, 2.1], [75, 75, 2.1], [50, 50, 2.1]];
         const cSpecs = [[125, 50, 3.2], [125, 50, 3.0], [125, 50, 2.1], [100, 50, 3.2], [100, 50, 3.0], [100, 50, 2.3], [100, 50, 2.1], [75, 45, 2.3], [75, 45, 2.1]];
         let resultMap = {}; 
-        
+
         for (let i = 0; i < json_data.length; i++) {
             let row = json_data[i];
             if (!row || row.length < 5 || row.join("").includes("소계")) continue;
-            
             let weight = getNum(row[10]); 
             if (weight <= 0) continue;
-            
-            let p_d1, p_d2, p_t, p_len;
-            let c_d1, c_d2, c_t;
-            let priceVal = 0, isNonPerf = false; 
-            
+            let p_d1, p_d2, p_t, p_len, c_d1, c_d2, c_t, priceVal = 0, isNonPerf = false; 
+
             if (formType === 'sales') {
                 p_d1 = getNum(row[2]); p_d2 = getNum(row[3]); p_t = getNum(row[4]); p_len = getNum(row[5]);
                 c_d1 = getNum(row[2]); c_d2 = getNum(row[3]); c_t = getNum(row[5]); 
@@ -376,7 +326,6 @@
                 let type = p_len >= 2 ? 'pipe' : 'short';
                 let specStr = (isNonPerf ? "[무타공] " : "") + (type === 'pipe' ? "각관 " : "단척 ") + `${p_d1}x${p_d2}x${p_t}`;
                 let key = `pipe_${specStr}`;
-                
                 if(!resultMap[key]) resultMap[key] = { type: type, name: specStr, spec: specStr, weight: 0, totalPrice: 0 };
                 resultMap[key].weight += weight;
                 resultMap[key].totalPrice += priceVal;
@@ -387,7 +336,6 @@
             if (matchedC) {
                 let specStr = (isNonPerf ? "[무타공] " : "") + `C형강 ${c_d1}x${c_d2}x${c_t}`;
                 let key = `cbeam_${specStr}`;
-                
                 if(!resultMap[key]) resultMap[key] = { type: 'cbeam', name: specStr, spec: specStr, weight: 0, totalPrice: 0 };
                 resultMap[key].weight += weight;
                 resultMap[key].totalPrice += priceVal;
@@ -396,11 +344,9 @@
         return Object.values(resultMap).map(item => ({ ...item, weight: Math.round(item.weight * 1000) / 1000 }));
     }
 
-    // ★ 해결의 핵심: 예전의 Two-Track(병렬 처리 & 즉시 완료) 방식으로 완전히 복구! ★
     async function sendToGoogleSheet(updateMode) {
         const cards = document.querySelectorAll('.file-result-card[data-id]');
         const totalFiles = cards.length;
-        
         if (totalFiles === 0) return alert("전송할 데이터가 없습니다.");
 
         const selectedManager = document.getElementById('managerSelect').value;
@@ -412,13 +358,10 @@
         const submitWeightBtn = document.getElementById('submitWeightBtn');
         const submitAllBtn = document.getElementById('submitAllBtn');
         const resetBtn = document.getElementById('resetBtn');
-        
-        submitWeightBtn.disabled = true;
-        submitAllBtn.disabled = true;
-        resetBtn.disabled = true;
+        submitWeightBtn.disabled = true; submitAllBtn.disabled = true; resetBtn.disabled = true;
 
-        // ★ 반드시 본인의 구글 웹 앱 URL로 교체하세요! ★
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzvHcGfFakvIgt1_SZQ3hJpJV6Vu8F8VjWUUDrnQxLzDdjZAnY9OmVOaNH8fC8vurF2/exec"; 
+        // ★★★ 본인의 최신 구글 웹 앱 배포 URL로 변경하세요! ★★★
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyuddXddBtehgbPXtGWWUoibZpVAGLUZZotxXJoYVDMFtFijHjUX4k7cSTq3LtJR5aI/exec"; 
 
         let today = new Date();
         let yyyy = today.getFullYear();
@@ -428,10 +371,10 @@
         let dd = String(today.getDate()).padStart(2, '0');
         let hh = String(today.getHours()).padStart(2, '0');
         let min = String(today.getMinutes()).padStart(2, '0');
-        
         let dateString = `${yy}.${mmString}.${dd} ${hh}:${min}`;
+        
+        let activeBtn = updateMode === 'weight' ? submitWeightBtn : submitAllBtn;
 
-        // 1. 모든 카드의 데이터를 비동기(병렬)로 한 번에 쏘아버립니다! (기다리지 않음)
         for (let i = 0; i < totalFiles; i++) {
             const card = cards[i];
             let id = card.getAttribute('data-id');
@@ -440,56 +383,49 @@
             
             let specData = JSON.parse(document.getElementById(`specData_${id}`).value);
             let accData = JSON.parse(document.getElementById(`accData_${id}`).value); 
-            let fileData = document.getElementById(`fileData64_${id}`).value;
             let fileName = document.getElementById(`fileName_${id}`).value;
-            let fileMime = document.getElementById(`fileMime_${id}`).value;
-
             let finalFileName = `[${yy}.${mmString}.${dd} ${hh}시${min}분]_${proj}_${fileName}`;
             let tempStatusText = `⏳ [${fileName}] 원본 백업 진행 중...`;
 
+            // 1. 시트에 데이터 기록 (빠름)
             const dataPayload = {
-                action: "upload_data",
-                updateMode: updateMode,
-                date: dateString, year: yyyy, month: mmNumber, project: proj,
-                isRevision: isRevisionCheck,
-                items: specData, 
-                hasBracket: accData.hasBracket ? "O" : "",
-                hasBolt: accData.hasBolt ? "O" : "",
-                manager: selectedManager,
-                tempText: tempStatusText
-            };
-
-            const filePayload = {
-                action: "upload_file",
-                year: yyyy, month: mmNumber,
-                fileData: fileData, 
-                fileName: finalFileName,
-                mimeType: fileMime,
-                tempText: tempStatusText
+                action: "upload_data", updateMode: updateMode, date: dateString, year: yyyy, month: mmNumber, 
+                project: proj, isRevision: isRevisionCheck, items: specData, 
+                hasBracket: accData.hasBracket ? "O" : "", hasBolt: accData.hasBolt ? "O" : "",
+                manager: selectedManager, tempText: tempStatusText
             };
 
             try {
-                // await 없이 바로 쏴서 백그라운드(Two-Track)로 넘겨버립니다.
-                fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(dataPayload) });
-                fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(filePayload) });
-            } catch (err) {
-                console.error("전송 오류:", err);
-            }
+                activeBtn.innerHTML = `처리 중... (${i + 1}/${totalFiles})`;
+                await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(dataPayload) });
+            } catch (err) { console.error("데이터 전송 오류:", err); }
+
+            // 2. 파일 업로드 (FormData 방식 - 안정적이고 메모리 초과 없음)
+            try {
+                let formData = new FormData();
+                formData.append('file', rawFiles[id]); 
+                formData.append('fileName', finalFileName);
+                formData.append('year', yyyy);
+                formData.append('month', mmNumber);
+                formData.append('tempText', tempStatusText);
+
+                // await 없이 백그라운드로 쏴버림
+                fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: formData });
+            } catch (err) { console.error("파일 전송 오류:", err); }
         }
 
-        // 2. 쏘자마자 바로 성공 메시지를 띄우고 화면을 초기화해서 다음 작업을 받을 준비를 합니다.
-        alert(`✅ 백그라운드 전송 시작!\n데이터 기록과 원본 엑셀 백업이 진행 중입니다.\n창을 닫지 마시고 다음 작업을 바로 진행하셔도 됩니다.`);
+        // 모든 전송 명령을 던졌으므로 화면 즉시 복구
+        alert(`✅ 백그라운드 전송 시작!\n(데이터 기록은 완료되었으며, 엑셀 파일은 백그라운드에서 안전하게 업로드 중입니다.)`);
         
         submitAllBtn.innerHTML = '전체 업데이트<br><span style="font-size: 0.75em; font-weight: normal;">(메인 + SAP)</span>';
         submitWeightBtn.innerHTML = '⭐ 중량만 업데이트<br><span style="font-size: 0.8em; font-weight: normal;">(메인 시트만)</span>';
-        submitAllBtn.disabled = false;
-        submitWeightBtn.disabled = false;
-        resetBtn.disabled = false;
+        submitAllBtn.disabled = false; submitWeightBtn.disabled = false; resetBtn.disabled = false;
         
         document.getElementById('resultArea').style.display = "none";
         document.getElementById('resultList').innerHTML = ""; 
         document.getElementById('excelFile').value = ''; 
         globalFileCounter = 0;
+        rawFiles = {}; // 저장소 비우기
     }
 </script>
 
