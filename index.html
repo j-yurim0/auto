@@ -60,7 +60,6 @@
         <select id="managerSelect" onchange="saveManager()">
             <option value="">담당자 선택</option>
             <option value="오은규">오은규</option>
-            <option value="전화진">전화진</option>
             <option value="김정석">김정석</option>
             <option value="김동주">김동주</option>
             <option value="김봉준">김봉준</option>
@@ -319,18 +318,18 @@
                         }
                         currentAcc = ""; 
                     }
-                } else if (formType === 'sales') {
-                    if (rowStr.includes("부자재")) currentAcc = 'bracket';
-                    if (rowStr.toUpperCase().includes("BOLTSET")) currentAcc = 'bolt';
-                    if (String(row[1] || "").includes("소계")) {
-                        let qty = getNum(row[7]); 
-                        if (qty > 0) {
-                            if (currentAcc === 'bracket') hasBracket = true;
-                            if (currentAcc === 'bolt') hasBolt = true;
-                        }
-                        currentAcc = ""; 
-                    }
-                }
+               } else if (formType === 'sales') {
+    if (rowStr.includes("부자재") || rowStr.includes("브라켓")) currentAcc = 'bracket';
+    if (rowStr.toUpperCase().includes("BOLTSET")) currentAcc = 'bolt';
+    if (String(row[1] || "").includes("소계")) {
+        let qty = getNum(row[7]); 
+        if (qty > 0) {
+            if (currentAcc === 'bracket') hasBracket = true;
+            if (currentAcc === 'bolt') hasBolt = true;
+        }
+        currentAcc = ""; 
+    }
+}
             }
         } catch(e) {}
         return { hasBracket, hasBolt };
