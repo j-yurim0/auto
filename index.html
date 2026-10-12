@@ -280,11 +280,17 @@
                         }
                     }
                 }
-                if (data[9] && data[9][2]) company = String(data[9][2]).replace(/주식회사/g, '').trim();
+if (data[9] && data[9][2])
+    company = String(data[9][2])
+        .replace(/주식회사|\(\s*주\s*\)|㈜/g, '')
+        .trim();
             } else if (formType === 'design') {
                 let estimateSheet = workbook.Sheets["견적서"] || workbook.Sheets[workbook.SheetNames[0]];
                 let estData = XLSX.utils.sheet_to_json(estimateSheet, {header: 1});
-                if (estData[10] && estData[10][2]) company = String(estData[10][2]).replace(/주식회사/g, '').trim();
+  if (estData[10] && estData[10][2])
+    company = String(estData[10][2])
+        .replace(/주식회사|\(\s*주\s*\)|㈜/g, '')
+        .trim();
                 if (estData[0] && estData[0][25]) site = String(estData[0][25]).trim();
             }
         } catch(e) {}
