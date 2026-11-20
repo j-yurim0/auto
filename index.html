@@ -99,11 +99,8 @@
         
         <div class="action-buttons">
             <button class="reset-btn" onclick="clearList()" id="resetBtn">목록 초기화</button>
-            <button class="submit-all-btn" onclick="sendToGoogleSheet('all')" id="submitAllBtn">
-                전체 업데이트<br><span style="font-size: 0.75em; font-weight: normal;">(메인 + SAP)</span>
-            </button>
-            <button class="submit-weight-btn" onclick="sendToGoogleSheet('weight')" id="submitWeightBtn">
-                ⭐ 중량만 업데이트<br><span style="font-size: 0.8em; font-weight: normal;">(메인 시트만)</span>
+            <button class="submit-weight-btn" onclick="sendToGoogleSheet()" id="submitWeightBtn">
+                견적 등록
             </button>
         </div>
         <p class="info-text">※ 투트랙(Two-Track) 백그라운드 초고속 업로드 적용됨</p>
@@ -403,7 +400,7 @@ if (estData[10] && estData[10][2]) {
     }
 
     // ★ 해결의 핵심: 예전의 Two-Track(병렬 처리 & 즉시 완료) 방식으로 완전히 복구! ★
-    async function sendToGoogleSheet(updateMode) {
+    async function sendToGoogleSheet() {
         const cards = document.querySelectorAll('.file-result-card[data-id]');
         const totalFiles = cards.length;
         
@@ -416,11 +413,9 @@ if (estData[10] && estData[10][2]) {
         }
 
         const submitWeightBtn = document.getElementById('submitWeightBtn');
-        const submitAllBtn = document.getElementById('submitAllBtn');
         const resetBtn = document.getElementById('resetBtn');
         
         submitWeightBtn.disabled = true;
-        submitAllBtn.disabled = true;
         resetBtn.disabled = true;
 
         // ★ 반드시 본인의 구글 웹 앱 URL로 교체하세요! ★
@@ -455,7 +450,6 @@ if (estData[10] && estData[10][2]) {
 
             const dataPayload = {
                 action: "upload_data",
-                updateMode: updateMode,
                 date: dateString, year: yyyy, month: mmNumber, project: proj,
                 isRevision: isRevisionCheck,
                 items: specData, 
@@ -475,9 +469,10 @@ if (estData[10] && estData[10][2]) {
             };
 
             try {
-                // await 없이 바로 쏴서 백그라운드(Two-Track)로 넘겨버립니다.
-                fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(dataPayload) });
-                fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(filePayload) });
+                // 현장별로 시트 기록 요청이 끝나면 원본 백업을 요청합니다.
+                fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(dataPayload) })
+                    .then(() => fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(filePayload) }))
+                    .catch(err => console.error('전송 오류:', err));
             } catch (err) {
                 console.error("전송 오류:", err);
             }
@@ -486,9 +481,6 @@ if (estData[10] && estData[10][2]) {
         // 2. 쏘자마자 바로 성공 메시지를 띄우고 화면을 초기화해서 다음 작업을 받을 준비를 합니다.
         alert(`✅ 백그라운드 전송 시작!\n데이터 기록과 원본 엑셀 백업이 진행 중입니다.\n창을 닫지 마시고 다음 작업을 바로 진행하셔도 됩니다.`);
         
-        submitAllBtn.innerHTML = '전체 업데이트<br><span style="font-size: 0.75em; font-weight: normal;">(메인 + SAP)</span>';
-        submitWeightBtn.innerHTML = '⭐ 중량만 업데이트<br><span style="font-size: 0.8em; font-weight: normal;">(메인 시트만)</span>';
-        submitAllBtn.disabled = false;
         submitWeightBtn.disabled = false;
         resetBtn.disabled = false;
         
